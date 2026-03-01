@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createConsola } from "consola";
 
-import { executeTool } from "./tools";
+import { executeTool, bashSession } from "./tools";
 
 const log = createConsola({ stdout: process.stderr as any });
 
@@ -22,6 +22,17 @@ const tools: Anthropic.Tool[] = [
     name: "tell_secret",
     description: "Tell a secret about vito",
     input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "bash",
+    description: "Execute a bash command in a persistent shell session",
+    input_schema: {
+      type: "object",
+      properties: {
+        command: { type: "string", description: "The bash command to run" },
+      },
+      required: ["command"],
+    },
   },
 ];
 
@@ -137,12 +148,14 @@ while (true) {
   messages.push({ role: "assistant", content: contentBlocks });
 
   if (stopReason === "tool_use") {
-    const toolResults: Anthropic.ToolResultBlockParam[] = contentBlocks
-      .filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use")
-      .map((b) => {
-        const result = executeTool(b.name);
-        return { type: "tool_result", tool_use_id: b.id, content: result };
-      });
+    const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
+      contentBlocks
+        .filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use")
+        .map(async (b) => {
+          const result = await executeTool(b.name, b.input as Record<string, unknown>);
+          return { type: "tool_result" as const, tool_use_id: b.id, content: result };
+        })
+    );
 
     messages.push({ role: "user", content: toolResults });
   } else {
@@ -150,3 +163,5 @@ while (true) {
   }
 }
 
+bashSession.close();
+process.exit(0);

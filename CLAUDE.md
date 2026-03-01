@@ -61,3 +61,17 @@ When you lack confidence about an API, a pattern, or a detail in this project, c
 - Integration tests (real API calls, real subprocess runs) are fine and preferred over mocks.
 
 </testing>
+
+<lessons>
+
+## Process-level thinking
+
+When writing code that manages OS resources (child processes, sockets, file handles), think at the **process** level, not just the function/class level. Ask: what does this object's lifecycle mean for the host process? A module-level singleton that spawns a subprocess is registering a handle on the event loop -- the process will never exit until that handle is gone.
+
+Concrete rule: never spawn subprocesses or open persistent connections in a constructor or at module scope. Use lazy initialization. And for CLI tools, always ensure cleanup before exit.
+
+## Test failure attribution
+
+When a test fails after your changes, **assume you caused it** until proven otherwise. Don't theorize about environment issues or "pre-existing problems" without first verifying. Cheapest check: revert your changes and see if the test passes. If you skipped that step, your attribution is a guess, not a diagnosis.
+
+</lessons>
