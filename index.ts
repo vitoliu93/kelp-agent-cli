@@ -13,8 +13,8 @@ if (!prompt) {
 }
 
 const client = new Anthropic({
-  baseURL: process.env.OPENROUTER_ANTHROPIC_BASE_URL,
-  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: process.env.ANTHROPIC_BASE_URL,
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 const tools: Anthropic.Tool[] = [
@@ -55,7 +55,7 @@ while (true) {
   }
 
   const stream = await client.messages.create({
-    model: process.env.AGENT_MODEL || "claude-sonnet-4-6",
+    model: process.env.ANTHROPIC_DEFAULT_MODEL || "claude-sonnet-4-6",
     max_tokens: 16000,
     stream: true,
     thinking: { type: "enabled", budget_tokens: 10000 },
@@ -149,3 +149,4 @@ while (true) {
     break;
   }
 }
+
