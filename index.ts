@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createConsola } from "consola";
 
 import { executeTool, bashSession } from "./tools";
+import { loadSkills } from "./skills";
 
 const log = createConsola({ stdout: process.stderr as any });
 
@@ -49,6 +50,13 @@ const tools: Anthropic.Tool[] = [
   },
 ];
 
+const skills = await loadSkills();
+let systemPrompt = SYSTEM_PROMPT;
+if (skills.length > 0) {
+  const skillLines = skills.map((s) => `- ${s.name} (${s.path}): ${s.description}`).join("\n");
+  systemPrompt += `\n\n## Available Skills\nWhen a user request matches a skill, read its SKILL.md with bash for detailed instructions.\n\n${skillLines}`;
+}
+
 const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
 
 function truncate(str: string, maxLen: number): string {
@@ -82,7 +90,7 @@ while (true) {
     model: process.env.ANTHROPIC_DEFAULT_MODEL || "claude-sonnet-4-6",
     max_tokens: 16000,
     stream: true,
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     thinking: { type: "enabled", budget_tokens: 10000 },
     tools,
     messages,
