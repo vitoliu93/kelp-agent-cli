@@ -1,6 +1,6 @@
 ---
 name: create-skill
-description: Scaffolds a new Agent Skill. Use when the user asks to create a skill, add a skill, or make a new skill for X.
+description: Scaffolds a new Agent Skill, including MCP-based skills. Use when the user asks to create, add, or generate a skill -- or to add an MCP server/tool as a skill.
 ---
 
 # Create Skill

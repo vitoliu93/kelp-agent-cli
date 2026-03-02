@@ -87,7 +87,9 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { join } from "node:path";
 
 export async function callTool(toolName: string, toolArgs: Record<string, unknown>): Promise<string> {
-  const config = JSON.parse(await Bun.file(join(import.meta.dir, "..", "mcp.json")).text());
+  const raw = await Bun.file(join(import.meta.dir, "..", "mcp.json")).text();
+  const interpolated = raw.replace(/\\$\\{(\\w+)\\}/g, (_, key) => process.env[key] ?? "");
+  const config = JSON.parse(interpolated);
 
   let transport: StdioClientTransport | StreamableHTTPClientTransport;
   if (config.transport === "stdio") {

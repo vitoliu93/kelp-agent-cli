@@ -54,7 +54,7 @@ const skills = await loadSkills();
 let systemPrompt = SYSTEM_PROMPT;
 if (skills.length > 0) {
   const skillLines = skills.map((s) => `- ${s.name} (${s.path}): ${s.description}`).join("\n");
-  systemPrompt += `\n\n## Available Skills\nWhen a user request matches a skill, read its SKILL.md with bash for detailed instructions.\n\n${skillLines}`;
+  systemPrompt += `\n\n## Available Skills\nIMPORTANT: Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. Do not improvise when a skill exists for the task.\n\n${skillLines}`;
 }
 
 const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
