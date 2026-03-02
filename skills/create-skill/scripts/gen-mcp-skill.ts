@@ -8,8 +8,8 @@ const args = Bun.argv.slice(2);
 
 if (args.length < 3) {
   console.error("Usage:");
-  console.error("  bun gen-mcp-skill.ts <name> --stdio <command> [args...]");
-  console.error("  bun gen-mcp-skill.ts <name> --http <url>");
+  console.error("  bun skills/create-skill/scripts/gen-mcp-skill.ts <name> --stdio <command> [args...]");
+  console.error("  bun skills/create-skill/scripts/gen-mcp-skill.ts <name> --http <url>");
   process.exit(1);
 }
 
@@ -43,40 +43,44 @@ await client.connect(transport);
 const { tools } = await client.listTools();
 await client.close();
 
-const skillDir = join(import.meta.dir, "skills", skillName);
+// script lives at skills/create-skill/scripts/ -- project root is 3 levels up
+const projectRoot = join(import.meta.dir, "..", "..", "..");
+const skillDir = join(projectRoot, "skills", skillName);
 const scriptsDir = join(skillDir, "scripts");
+const refsDir = join(skillDir, "references");
 await mkdir(scriptsDir, { recursive: true });
+await mkdir(refsDir, { recursive: true });
 
 await Bun.write(join(skillDir, "mcp.json"), JSON.stringify(mcpConfig, null, 2) + "\n");
 
-const toolLines = tools
-  .map((t) => {
-    const desc = t.description ?? "(no description)";
-    const schema = JSON.stringify(t.inputSchema, null, 2)
-      .split("\n")
-      .map((l) => "    " + l)
-      .join("\n");
-    return `- **${t.name}**: ${desc}\n  Run: \`bun skills/${skillName}/scripts/${t.name}.ts '<json args>'\`\n  Input schema:\n${schema}`;
-  })
-  .join("\n\n");
-
+// Light SKILL.md -- description is a placeholder; kelp rewrites it after reading references/tools.md
 const toolNames = tools.map((t) => t.name).join(", ");
 const skillMd = `---
 name: ${skillName}
-description: MCP skill providing ${tools.length} tool(s): ${toolNames}
+description: <placeholder -- kelp rewrites this>
 ---
 
 # ${skillName}
 
-Tools available via MCP (${mcpConfig.transport} transport).
-
-## Tools
-
-${toolLines}
+Tools: ${toolNames}
+For full tool schemas, read [references/tools.md](references/tools.md).
 `;
 
 await Bun.write(join(skillDir, "SKILL.md"), skillMd);
 
+// Heavy references/tools.md -- full schemas for kelp to read on activation
+const toolSections = tools
+  .map((t) => {
+    const desc = t.description ?? "(no description)";
+    const schema = JSON.stringify(t.inputSchema, null, 2);
+    return `## ${t.name}\n\n${desc}\n\n\`\`\`json\n${schema}\n\`\`\``;
+  })
+  .join("\n\n");
+
+const toolsMd = `# ${skillName} Tools\n\n${toolSections}\n`;
+await Bun.write(join(refsDir, "tools.md"), toolsMd);
+
+// Shared MCP client helper
 const clientTs = `import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";

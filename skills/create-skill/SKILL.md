@@ -12,6 +12,29 @@ If the user hasn't specified what the skill should do, ask them one question:
 
 Do not proceed until you have a clear purpose.
 
+## Step 1b: MCP Path (skip to this if user mentions MCP)
+
+When the user mentions an MCP server, a server command, or transport config (`--stdio`, `--http`), take this path instead of Steps 2–6.
+
+1. If not already provided, ask for:
+   - Skill name (will become the directory name)
+   - Transport: `--stdio <command> [args...]` or `--http <url>`
+
+2. Run the generator:
+   ```
+   bun skills/create-skill/scripts/gen-mcp-skill.ts <name> --stdio <cmd> [args...]
+   ```
+   or
+   ```
+   bun skills/create-skill/scripts/gen-mcp-skill.ts <name> --http <url>
+   ```
+
+3. Read `skills/<name>/references/tools.md` to understand what each tool does.
+
+4. **Rewrite** `skills/<name>/SKILL.md` -- replace the placeholder description with a real one. Synthesize a trigger-keyword-rich description from the tool names and descriptions you just read. The body intro should also describe what the skill does and when to use it.
+
+5. Skip to Step 7 (Confirm).
+
 ## Step 2: Derive the skill name
 
 Rules (from specification):
