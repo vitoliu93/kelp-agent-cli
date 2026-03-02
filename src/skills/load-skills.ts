@@ -10,31 +10,34 @@ export interface SkillMeta {
 export function parseFrontmatter(content: string): { name: string; description: string } | null {
   const parts = content.split("---");
   if (parts.length < 3) return null;
-  const fm = parts[1];
-  const name = fm.match(/^name:\s*(.+)$/m)?.[1]?.trim();
-  const description = fm.match(/^description:\s*(.+)$/m)?.[1]?.trim();
+
+  const frontmatter = parts[1];
+  const name = frontmatter.match(/^name:\s*(.+)$/m)?.[1]?.trim();
+  const description = frontmatter.match(/^description:\s*(.+)$/m)?.[1]?.trim();
   if (!name || !description) return null;
+
   return { name, description };
 }
 
-export async function loadSkills(): Promise<SkillMeta[]> {
-  const skillsDir = join(import.meta.dir, "skills");
-  let dirs: string[];
+export async function loadSkills(skillsDir: string): Promise<SkillMeta[]> {
+  let entries: string[];
   try {
-    dirs = readdirSync(skillsDir);
+    entries = readdirSync(skillsDir);
   } catch {
     return [];
   }
 
   const skills: SkillMeta[] = [];
-  for (const dir of dirs) {
-    const skillPath = join(skillsDir, dir, "SKILL.md");
+  for (const entry of entries) {
+    const skillPath = join(skillsDir, entry, "SKILL.md");
     const file = Bun.file(skillPath);
     if (!(await file.exists())) continue;
-    const content = await file.text();
-    const meta = parseFrontmatter(content);
+
+    const meta = parseFrontmatter(await file.text());
     if (!meta) continue;
-    skills.push({ ...meta, path: join(skillsDir, dir) });
+
+    skills.push({ ...meta, path: join(skillsDir, entry) });
   }
+
   return skills;
 }

@@ -2,6 +2,26 @@
 read @README.md to understand user's vision
 </project_background>
 
+<architecture>
+
+## agent code architecture
+
+- `src/index.ts`: CLI entry, dependency wiring, cleanup.
+- `src/agent/`: agent loop and system prompt assembly.
+- `src/tools/`: tool schema, execution, and bash session.
+- `src/skills/`: skill discovery and metadata parsing.
+- `src/logger.ts` / `src/paths.ts` / `src/cli/resolve-prompt.ts`: shared runtime helpers.
+
+## design principle
+
+- thin entrypoint, heavy logic in modules
+- inject dependencies, avoid hidden global state
+- stateful resources must be explicitly created and closed
+- keep repo paths explicit
+- prefer testable seams over live-network tests
+
+</architecture>
+
 <package_tool>
 
 Use Bun instead of Node.js, npm, pnpm, or vite.

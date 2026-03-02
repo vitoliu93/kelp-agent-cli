@@ -1,5 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { parseFrontmatter, loadSkills } from "../skills";
+import { skillsDir } from "../src/paths";
+import { loadSkills, parseFrontmatter } from "../src/skills/load-skills";
 
 describe("skills", () => {
   test("parseFrontmatter extracts name and description", () => {
@@ -14,7 +15,7 @@ description: A demo skill that greets the user.
   });
 
   test("loadSkills returns hello-world skill", async () => {
-    const skills = await loadSkills();
+    const skills = await loadSkills(skillsDir);
     expect(skills.length).toBeGreaterThan(0);
     const hw = skills.find((s) => s.name === "hello-world");
     expect(hw).toBeDefined();
