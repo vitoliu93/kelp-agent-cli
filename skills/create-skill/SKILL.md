@@ -33,7 +33,13 @@ skills/<name>/
 
 Use `mkdir -p skills/<name>` via Bash.
 
-## Step 4: Write SKILL.md
+## Step 4: Follow Authoring Best Practices
+
+Before generating the skill content or scripts, review the official guidelines:
+- Read [Skill Authoring Guide](references/creating-skill-guide.md) to understand the Agent Skills architecture and specification.
+- Read [Skill Best Practices](references/best-practices.md) for tips on designing robust agentic workflows and scripts.
+
+## Step 5: Write SKILL.md
 
 Create `skills/<name>/SKILL.md` with this structure:
 
@@ -56,7 +62,7 @@ Body rules:
 - Write whatever instructions help the agent perform the task
 - Keep it under 500 lines; move heavy reference material to `references/` files
 
-## Step 5: Optional subdirectories
+## Step 6: Optional subdirectories
 
 Only create these if the skill actually needs them:
 
@@ -72,7 +78,7 @@ See [reference](references/REFERENCE.md).
 Run: scripts/extract.py
 ```
 
-## Step 6: Confirm
+## Step 7: Confirm
 
 After writing the file, tell the user:
 - The skill name
