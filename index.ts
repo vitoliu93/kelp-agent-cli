@@ -108,7 +108,6 @@ while (true) {
       // 关键：任何“阶段性日志”输出前，先把 stdout 光标换到新行
       if (block.type === "tool_use") {
         process.stdout.write("\n");
-        log.info(`<- [tool_use] ${block.name}`);
       } else if (block.type === "text") {
         process.stdout.write("\n");
         log.info(`<- [text]`);
@@ -155,6 +154,7 @@ while (true) {
           };
           block.input = JSON.parse(block._inputStr ?? "{}");
           delete block._inputStr;
+          log.info(`<- [tool_use] ${block.name}: ${truncate(JSON.stringify(block.input), 80)}`);
         }
         contentBlocks.push(currentBlock);
         currentBlock = null;
