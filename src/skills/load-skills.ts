@@ -19,7 +19,7 @@ export function parseFrontmatter(content: string): { name: string; description: 
   return { name, description };
 }
 
-export async function loadSkills(skillsDir: string): Promise<SkillMeta[]> {
+async function loadSkillsFromDir(skillsDir: string): Promise<SkillMeta[]> {
   let entries: string[];
   try {
     entries = readdirSync(skillsDir);
@@ -40,4 +40,17 @@ export async function loadSkills(skillsDir: string): Promise<SkillMeta[]> {
   }
 
   return skills;
+}
+
+export async function loadSkills(skillsDirs: string[]): Promise<SkillMeta[]> {
+  const mergedSkills = new Map<string, SkillMeta>();
+
+  for (const skillsDir of skillsDirs) {
+    const skills = await loadSkillsFromDir(skillsDir);
+    for (const skill of skills) {
+      mergedSkills.set(skill.name, skill);
+    }
+  }
+
+  return [...mergedSkills.values()];
 }

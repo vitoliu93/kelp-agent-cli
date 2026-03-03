@@ -6,7 +6,11 @@ import { runAgent } from "./agent/run-agent";
 import { collectRuntimeInfo } from "./agent/runtime-info";
 import { getAnthropicClientOptions } from "./env";
 import { createLogger } from "./logger";
-import { skillsDir } from "./paths";
+import {
+  assertProjectRootReadable,
+  getSkillDirectories,
+  resolveProjectRoot,
+} from "./paths";
 import { loadSkills } from "./skills/load-skills";
 import { askUserToolDefinition, baseToolDefinitions } from "./tools/definitions";
 import { BashSession } from "./tools/bash-session";
@@ -31,6 +35,9 @@ export async function main(): Promise<void> {
   const interactiveMode = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const askUser = interactiveMode ? createAskUser() : undefined;
   const runtime = collectRuntimeInfo();
+  const projectRoot = resolveProjectRoot();
+  assertProjectRootReadable(projectRoot);
+  const skillDirs = getSkillDirectories();
 
   try {
     await runAgent(prompt, {
@@ -47,7 +54,7 @@ export async function main(): Promise<void> {
         }
         return executeTool(name, input, bashSession);
       },
-      loadSkills: () => loadSkills(skillsDir),
+      loadSkills: () => loadSkills(skillDirs),
       stdout: process.stdout,
       runtime,
     });
