@@ -6,10 +6,14 @@ export interface ResolvePromptOptions {
 
 export async function resolvePrompt(options: ResolvePromptOptions): Promise<string | null> {
   const argPrompt = options.argv.slice(2).join(" ").trim();
-  if (argPrompt) return argPrompt;
 
-  if (options.isTTY) return null;
+  if (options.isTTY) return argPrompt || null;
 
-  const stdinPrompt = (await options.readStdin()).trim();
-  return stdinPrompt || null;
+  const stdinContent = (await options.readStdin()).trim();
+
+  if (argPrompt && stdinContent) {
+    return `<stdin>\n${stdinContent}\n</stdin>\n\n${argPrompt}`;
+  }
+
+  return argPrompt || stdinContent || null;
 }

@@ -136,6 +136,16 @@ describe("agent", () => {
     expect(prompt).toBe("hi, i am vito");
   });
 
+  test("resolvePrompt combines argv and stdin when both present", async () => {
+    const prompt = await resolvePrompt({
+      argv: ["bun", "src/index.ts", "summarize"],
+      isTTY: false,
+      readStdin: async () => "M src/foo.ts",
+    });
+
+    expect(prompt).toBe("<stdin>\nM src/foo.ts\n</stdin>\n\nsummarize");
+  });
+
   test("runAgent writes text output", async () => {
     const stdout = new FakeStdout();
     const logger = new FakeLogger();
