@@ -22,6 +22,7 @@ type ToolUseBlockWithInputBuffer = Anthropic.ToolUseBlock & { _inputStr?: string
 type AskUserHandler = (input: AskUserToolInput) => Promise<string>;
 
 const DEFAULT_MAX_ASK_USER_ROUNDS = 3;
+const DEFAULT_MAX_PLAIN_TEXT_ASK_USER_RETRIES = 2;
 
 export interface RunAgentDeps {
   client: StreamClient;
@@ -66,6 +67,20 @@ function getToolsForTurn(deps: RunAgentDeps, askUserRounds: number): Anthropic.T
     return deps.baseTools;
   }
   return [...deps.baseTools, deps.askUserTool];
+}
+
+function getTextBlocks(contentBlocks: Anthropic.ContentBlock[]): Anthropic.TextBlock[] {
+  return contentBlocks.filter((block): block is Anthropic.TextBlock => block.type === "text");
+}
+
+function getTrailingQuestion(contentBlocks: Anthropic.ContentBlock[]): string | null {
+  const text = getTextBlocks(contentBlocks)
+    .map((block) => block.text)
+    .join("")
+    .trim();
+
+  if (!text.endsWith("?")) return null;
+  return text;
 }
 
 async function consumeStream(
@@ -143,6 +158,7 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
   const skills = await deps.loadSkills();
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
   let askUserRounds = 0;
+  let plainTextAskUserRetries = 0;
 
   while (true) {
     const tools = getToolsForTurn(deps, askUserRounds);
@@ -164,6 +180,21 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
     const { contentBlocks, stopReason } = await consumeStream(stream, deps.logger, deps.stdout);
     messages.push({ role: "assistant", content: contentBlocks });
 
+    const trailingQuestion = askUserEnabled ? getTrailingQuestion(contentBlocks) : null;
+    if (trailingQuestion && stopReason !== "tool_use") {
+      if (plainTextAskUserRetries >= DEFAULT_MAX_PLAIN_TEXT_ASK_USER_RETRIES) {
+        throw new Error("assistant asked the user a plain-text question instead of using ask_user");
+      }
+
+      plainTextAskUserRetries += 1;
+      deps.logger.info("-> ask_user_retry: assistant ended the turn with a plain-text question");
+      messages.push({
+        role: "user",
+        content: `You ended the turn by asking the user a question in plain text: "${trailingQuestion}". Re-ask that exact question with the ask_user tool now. Use kind "confirm" for yes/no approval, otherwise use kind "clarify". Do not call any other tool or add any text.`,
+      });
+      continue;
+    }
+
     if (stopReason !== "tool_use") break;
 
     const toolUseBlocks = contentBlocks.filter(isToolUseBlock);
@@ -184,6 +215,7 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
       );
       const answer = await deps.askUser(askUserBlock.input as AskUserToolInput);
       askUserRounds += 1;
+      plainTextAskUserRetries = 0;
       deps.logger.info(`-> ask_user_result: ${truncate(answer, 80)}`);
       messages.push({
         role: "user",

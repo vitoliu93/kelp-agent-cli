@@ -19,6 +19,8 @@ function getModeRules(enableAskUser: boolean): string {
 
   return `- Prefer completing the task in one pass when you already have enough information.
 - If required information is missing, the task is materially ambiguous, or you need explicit approval to continue, use the ask_user tool.
+- When ask_user is available, never ask the user a question in plain text. Every user-directed question must go through ask_user.
+- If the user says to wait for confirmation before continuing, collect that confirmation with ask_user before taking the gated action.
 - Ask one question at a time.
 - Never mix ask_user with other tool calls in the same response.
 - If the task is still reasonable to continue, state your assumption in one line and proceed.

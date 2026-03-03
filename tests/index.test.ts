@@ -39,7 +39,7 @@ class FakeClient {
 
   messages = {
     create: async (params: Anthropic.MessageCreateParamsStreaming) => {
-      this.calls.push(params);
+      this.calls.push(structuredClone(params));
       const stream = this.streams.shift();
       if (!stream) {
         throw new Error("No fake stream available");
@@ -248,6 +248,49 @@ describe("agent", () => {
     expect(stdout.text()).toContain("confirmed");
   });
 
+  test("runAgent retries when the assistant asks a plain-text confirmation question", async () => {
+    const stdout = new FakeStdout();
+    const logger = new FakeLogger();
+    const client = new FakeClient([
+      textResponse("Shall I proceed with the rename?"),
+      toolUseResponse("ask-3", "ask_user", {
+        kind: "confirm",
+        question: "Shall I proceed with the rename?",
+      }),
+      textResponse("confirmed"),
+    ]);
+
+    await runAgent("prepare rename", {
+      client,
+      logger,
+      baseTools: baseToolDefinitions,
+      askUserTool: askUserToolDefinition,
+      askUser: async () => JSON.stringify({ kind: "confirm", answer: "yes" }),
+      maxAskUserRounds: 3,
+      executeTool: async () => "",
+      loadSkills: async () => [],
+      stdout,
+    });
+
+    expect(client.calls).toHaveLength(3);
+    expect(client.calls[1]!.messages.at(-1)).toEqual({
+      role: "user",
+      content:
+        'You ended the turn by asking the user a question in plain text: "Shall I proceed with the rename?". Re-ask that exact question with the ask_user tool now. Use kind "confirm" for yes/no approval, otherwise use kind "clarify". Do not call any other tool or add any text.',
+    });
+    expect(client.calls[2]!.messages.at(-1)).toEqual({
+      role: "user",
+      content: [
+        {
+          type: "tool_result",
+          tool_use_id: "ask-3",
+          content: JSON.stringify({ kind: "confirm", answer: "yes" }),
+        },
+      ],
+    });
+    expect(stdout.text()).toContain("confirmed");
+  });
+
   test("runAgent stops exposing ask_user after the round cap", async () => {
     const stdout = new FakeStdout();
     const logger = new FakeLogger();
@@ -379,6 +422,7 @@ describe("system prompt", () => {
     expect(nonInteractive).toContain("If a task is ambiguous, state your assumption in one line and proceed.");
     expect(nonInteractive).not.toContain("use the ask_user tool");
     expect(interactive).toContain("use the ask_user tool");
+    expect(interactive).toContain("never ask the user a question in plain text");
     expect(interactive).toContain("Never mix ask_user with other tool calls in the same response.");
   });
 });
