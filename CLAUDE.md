@@ -2,6 +2,18 @@
 Personal TUI agent built from scratch with Bun + Claude Messages API. A learning project inspired by openclaw and claude agent sdk. CLI name: `kelp`.
 </project_background>
 
+<self_iteration>
+This file has two kinds of content: stable constraints and working knowledge.
+
+Stable constraints express human intent and project rules. Do not rewrite them unless explicitly instructed.
+
+Working knowledge must stay current. When confirmed work changes how the project is understood, revise the relevant section to reflect the best current model. Do not treat new knowledge as append-only. Integrate it, replace obsolete statements, and remove claims that are no longer true.
+
+Revise only from evidence: landed code, verified behavior, or repeated confirmed debugging results. Do not update from plans, guesses, or speculative future changes.
+
+If a new fact conflicts with an old statement, make the conflict explicit by rewriting the old statement, not by leaving both behind.
+</self_iteration>
+
 <architecture>
     <sourcecode>
     - `src/index.ts`: CLI entry, dependency wiring, cleanup.
@@ -81,19 +93,6 @@ Personal TUI agent built from scratch with Bun + Claude Messages API. A learning
     - Integration tests (real API calls, real subprocess runs) are fine and preferred over mocks.
     </philosophy>
 
-    <testing_commands>
-      Use `bun test` to run tests.
-
-    ```ts#index.test.ts
-    import { test, expect } from "bun:test";
-
-    test("hello world", () => {
-      expect(1).toBe(1);
-    });
-    ```
-
-    </testing_commands>
-
     <agent_integration_testing>
     For features touching the tool execution pipeline, add 1-3 real agent integration tests in `tests/<feature>-agent.test.ts`.
 
@@ -103,9 +102,6 @@ Personal TUI agent built from scratch with Bun + Claude Messages API. A learning
 </testing>
 
 <lessons>
-    <lessons_policy>
-        This section is a living log. When a debugging session or implementation reveals a reusable insight, capture it here as a new named block. Keep each entry concrete: state the mistake, the fix, and the rule.
-    </lessons_policy>
     <process_level_thinking>
     When writing code that manages OS resources (child processes, sockets, file handles), think at the **process** level, not just the function/class level. Ask: what does this object's lifecycle mean for the host process? A module-level singleton that spawns a subprocess is registering a handle on the event loop -- the process will never exit until that handle is gone.
 
