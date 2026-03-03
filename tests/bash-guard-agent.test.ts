@@ -11,6 +11,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { afterEach, describe, expect, test } from "bun:test";
 
 import { runAgent } from "../src/agent/run-agent";
+import { collectRuntimeInfo } from "../src/agent/runtime-info";
 import { getAnthropicClientOptions } from "../src/env";
 import { checkBashCommand } from "../src/tools/bash-guard";
 import { BashSession } from "../src/tools/bash-session";
@@ -53,6 +54,7 @@ function runWithGuard(prompt: string, bashSession: BashSession): Promise<string>
     executeTool: makeExecuteTool(bashSession),
     loadSkills: async () => [],
     stdout,
+    runtime: collectRuntimeInfo(),
   }).then(() => stdout.text());
 }
 

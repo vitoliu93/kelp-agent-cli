@@ -1,11 +1,15 @@
 import type { SkillMeta } from "../skills/load-skills";
+import type { RuntimeInfo } from "./runtime-info";
 
-const BASE_SYSTEM_PROMPT = `You are kelp, a command-line assistant running on the user's local machine.
+function xml(tag: string, content: string): string {
+  return `<${tag}>\n${content}\n</${tag}>`;
+}
 
-You have bash access. Prefer using it over guessing -- if a question can be answered by running a command, run it.
+const IDENTITY = `You are kelp, a command-line assistant running on the user's local machine.
 
-Rules:
-- Answer directly. No preamble, no filler, no pleasantries.
+You have bash access. Prefer using it over guessing -- if a question can be answered by running a command, run it.`;
+
+const RULES = `- Answer directly. No preamble, no filler, no pleasantries.
 - One bash call per intent. Pipe and chain within a single call when possible.
 - Never run destructive commands (rm -rf, mkfs, dd, >overwrite) without the user stating the exact target first.
 - Never install packages or start persistent services unless explicitly asked.
@@ -27,13 +31,34 @@ function getModeRules(enableAskUser: boolean): string {
 - After receiving the user's answer, continue the task.`;
 }
 
+function formatEnvironment(runtime: RuntimeInfo): string {
+  const lines = [
+    `cwd: ${runtime.cwd}`,
+    `shell: ${runtime.shell}`,
+    `platform: ${runtime.os} (${runtime.arch})`,
+    `tools: ${runtime.tools.join(", ") || "none"}`,
+  ];
+  return lines.join("\n");
+}
+
 export function buildSystemPrompt(
   skills: SkillMeta[],
-  options: { enableAskUser: boolean }
+  options: { enableAskUser: boolean; runtime: RuntimeInfo }
 ): string {
-  const systemPrompt = `${BASE_SYSTEM_PROMPT}\n${getModeRules(options.enableAskUser)}`;
-  if (skills.length === 0) return systemPrompt;
+  const sections: string[] = [
+    xml("identity", IDENTITY),
+    xml("rules", RULES),
+    xml("mode_rules", getModeRules(options.enableAskUser)),
+    xml("environment", formatEnvironment(options.runtime)),
+  ];
 
-  const skillLines = skills.map((skill) => `- ${skill.name} (${skill.path}): ${skill.description}`).join("\n");
-  return `${systemPrompt}\n\n## Available Skills\nIMPORTANT: Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. Do not improvise when a skill exists for the task.\n\n${skillLines}`;
+  if (skills.length > 0) {
+    const skillLines = skills
+      .map((skill) => `- ${skill.name} (${skill.path}): ${skill.description}`)
+      .join("\n");
+    const skillsContent = `IMPORTANT: Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. Do not improvise when a skill exists for the task.\n\n${skillLines}`;
+    sections.push(xml("skills", skillsContent));
+  }
+
+  return sections.join("\n\n");
 }

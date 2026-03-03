@@ -6,9 +6,18 @@ import { createAskUser } from "../src/cli/ask-user";
 import { resolvePrompt } from "../src/cli/resolve-prompt";
 import { getAnthropicClientOptions, getDefaultModel } from "../src/env";
 import { buildSystemPrompt } from "../src/agent/system-prompt";
+import type { RuntimeInfo } from "../src/agent/runtime-info";
 import { BashSession } from "../src/tools/bash-session";
 import { askUserToolDefinition, baseToolDefinitions, createToolDefinitions } from "../src/tools/definitions";
 import { executeTool } from "../src/tools/execute-tool";
+
+const fakeRuntime: RuntimeInfo = {
+  cwd: "/home/vito/project",
+  shell: "/bin/zsh",
+  os: "linux",
+  arch: "x64",
+  tools: ["bun", "git"],
+};
 
 class FakeLogger {
   logs: string[] = [];
@@ -139,6 +148,7 @@ describe("agent", () => {
       executeTool: async () => "",
       loadSkills: async () => [],
       stdout,
+      runtime: fakeRuntime,
     });
 
     expect(stdout.text()).toContain("hello from kelp");
@@ -165,6 +175,7 @@ describe("agent", () => {
       },
       loadSkills: async () => [],
       stdout,
+      runtime: fakeRuntime,
     });
 
     expect(executedTools).toEqual(["tell_secret"]);
@@ -198,6 +209,7 @@ describe("agent", () => {
       executeTool: async () => "",
       loadSkills: async () => [],
       stdout,
+      runtime: fakeRuntime,
     });
 
     expect(answers).toEqual(["which file?"]);
@@ -233,6 +245,7 @@ describe("agent", () => {
       executeTool: async () => "",
       loadSkills: async () => [],
       stdout,
+      runtime: fakeRuntime,
     });
 
     expect(client.calls[1]!.messages[2]).toEqual({
@@ -270,6 +283,7 @@ describe("agent", () => {
       executeTool: async () => "",
       loadSkills: async () => [],
       stdout,
+      runtime: fakeRuntime,
     });
 
     expect(client.calls).toHaveLength(3);
@@ -311,6 +325,7 @@ describe("agent", () => {
       executeTool: async () => "",
       loadSkills: async () => [],
       stdout,
+      runtime: fakeRuntime,
     });
 
     expect(client.calls[0]!.tools.map((tool) => ("name" in tool ? tool.name : ""))).toContain("ask_user");
@@ -416,13 +431,23 @@ describe("interactive tools", () => {
 
 describe("system prompt", () => {
   test("buildSystemPrompt switches ask_user guidance by mode", () => {
-    const nonInteractive = buildSystemPrompt([], { enableAskUser: false });
-    const interactive = buildSystemPrompt([], { enableAskUser: true });
+    const nonInteractive = buildSystemPrompt([], { enableAskUser: false, runtime: fakeRuntime });
+    const interactive = buildSystemPrompt([], { enableAskUser: true, runtime: fakeRuntime });
 
     expect(nonInteractive).toContain("If a task is ambiguous, state your assumption in one line and proceed.");
     expect(nonInteractive).not.toContain("use the ask_user tool");
     expect(interactive).toContain("use the ask_user tool");
     expect(interactive).toContain("never ask the user a question in plain text");
     expect(interactive).toContain("Never mix ask_user with other tool calls in the same response.");
+  });
+
+  test("buildSystemPrompt includes XML environment section", () => {
+    const prompt = buildSystemPrompt([], { enableAskUser: false, runtime: fakeRuntime });
+
+    expect(prompt).toContain("<environment>");
+    expect(prompt).toContain("</environment>");
+    expect(prompt).toContain(fakeRuntime.cwd);
+    expect(prompt).toContain(fakeRuntime.shell);
+    expect(prompt).toContain(fakeRuntime.os);
   });
 });

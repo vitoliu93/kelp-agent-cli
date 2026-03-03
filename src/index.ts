@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { resolvePrompt } from "./cli/resolve-prompt";
 import { createAskUser } from "./cli/ask-user";
 import { runAgent } from "./agent/run-agent";
+import { collectRuntimeInfo } from "./agent/runtime-info";
 import { getAnthropicClientOptions } from "./env";
 import { createLogger } from "./logger";
 import { skillsDir } from "./paths";
@@ -29,6 +30,7 @@ export async function main(): Promise<void> {
   const client = new Anthropic(getAnthropicClientOptions());
   const interactiveMode = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const askUser = interactiveMode ? createAskUser() : undefined;
+  const runtime = collectRuntimeInfo();
 
   try {
     await runAgent(prompt, {
@@ -47,6 +49,7 @@ export async function main(): Promise<void> {
       },
       loadSkills: () => loadSkills(skillsDir),
       stdout: process.stdout,
+      runtime,
     });
   } finally {
     bashSession.close();

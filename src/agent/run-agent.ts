@@ -6,6 +6,7 @@ import { truncate } from "../logger";
 import type { SkillMeta } from "../skills/load-skills";
 import type { AskUserToolInput } from "../cli/ask-user";
 import { buildSystemPrompt } from "./system-prompt";
+import type { RuntimeInfo } from "./runtime-info";
 
 type StreamClient = {
   messages: {
@@ -34,6 +35,7 @@ export interface RunAgentDeps {
   executeTool: ToolExecutor;
   loadSkills: SkillLoader;
   stdout: OutputWriter;
+  runtime: RuntimeInfo;
 }
 
 function logRequest(logger: Logger, message: Anthropic.MessageParam): void {
@@ -163,7 +165,7 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
   while (true) {
     const tools = getToolsForTurn(deps, askUserRounds);
     const askUserEnabled = tools.some((tool) => "name" in tool && tool.name === "ask_user");
-    const systemPrompt = buildSystemPrompt(skills, { enableAskUser: askUserEnabled });
+    const systemPrompt = buildSystemPrompt(skills, { enableAskUser: askUserEnabled, runtime: deps.runtime });
 
     logRequest(deps.logger, messages[messages.length - 1]!);
 
