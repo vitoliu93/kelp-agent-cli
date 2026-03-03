@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build:bin": "bun build --compile src/index.ts --outfile dist/kelp",
+    "build:bin": "bun build --compile src/index.ts --outfile dist/kelp && mkdir -p \"$HOME/.local/bin\" && ln -sf \"$PWD/dist/kelp\" \"$HOME/.local/bin/kelp\"",
     "test": "bun test"
   },
   "devDependencies": {
