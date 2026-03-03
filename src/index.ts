@@ -10,6 +10,7 @@ import { loadSkills } from "./skills/load-skills";
 import { askUserToolDefinition, baseToolDefinitions } from "./tools/definitions";
 import { BashSession } from "./tools/bash-session";
 import { executeTool } from "./tools/execute-tool";
+import { checkBashCommand } from "./tools/bash-guard";
 
 export async function main(): Promise<void> {
   const prompt = await resolvePrompt({
@@ -37,7 +38,13 @@ export async function main(): Promise<void> {
       askUserTool: interactiveMode ? askUserToolDefinition : undefined,
       askUser,
       maxAskUserRounds: 3,
-      executeTool: (name, input) => executeTool(name, input, bashSession),
+      executeTool: async (name, input) => {
+        if (name === "bash") {
+          const rejection = checkBashCommand(input.command as string);
+          if (rejection) return rejection;
+        }
+        return executeTool(name, input, bashSession);
+      },
       loadSkills: () => loadSkills(skillsDir),
       stdout: process.stdout,
     });
