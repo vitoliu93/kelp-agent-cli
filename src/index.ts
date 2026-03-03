@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import { resolvePrompt } from "./cli/resolve-prompt";
 import { runAgent } from "./agent/run-agent";
+import { getAnthropicClientOptions } from "./env";
 import { createLogger } from "./logger";
 import { skillsDir } from "./paths";
 import { loadSkills } from "./skills/load-skills";
@@ -23,10 +24,7 @@ export async function main(): Promise<void> {
 
   const logger = createLogger();
   const bashSession = new BashSession();
-  const client = new Anthropic({
-    baseURL: process.env.ANTHROPIC_BASE_URL,
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  });
+  const client = new Anthropic(getAnthropicClientOptions());
 
   try {
     await runAgent(prompt, {

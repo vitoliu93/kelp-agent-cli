@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+import { getDefaultModel } from "../env";
 import type { Logger } from "../logger";
 import { truncate } from "../logger";
 import type { SkillMeta } from "../skills/load-skills";
@@ -128,7 +129,7 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
     logRequest(deps.logger, messages[messages.length - 1]!);
 
     const stream = await deps.client.messages.create({
-      model: process.env.ANTHROPIC_DEFAULT_MODEL || "claude-sonnet-4-6",
+      model: getDefaultModel(),
       max_tokens: 16000,
       stream: true,
       system: systemPrompt,

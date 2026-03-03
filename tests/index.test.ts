@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { runAgent } from "../src/agent/run-agent";
 import { resolvePrompt } from "../src/cli/resolve-prompt";
+import { getAnthropicClientOptions, getDefaultModel } from "../src/env";
 import { BashSession } from "../src/tools/bash-session";
 import { executeTool } from "../src/tools/execute-tool";
 import { toolDefinitions } from "../src/tools/definitions";
@@ -94,6 +95,15 @@ function toolUseResponse(
   ]);
 }
 
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
+}
+
 describe("agent", () => {
   test("resolvePrompt prefers argv text", async () => {
     const prompt = await resolvePrompt({
@@ -162,6 +172,36 @@ describe("agent", () => {
       content: [{ type: "tool_result", tool_use_id: "tool-1", content: "secret" }],
     });
     expect(stdout.text()).toContain("done");
+  });
+});
+
+describe("env", () => {
+  const originalEnv = {
+    KELP_BASE_URL: process.env.KELP_BASE_URL,
+    KELP_API_KEY: process.env.KELP_API_KEY,
+    KELP_DEFAULT_MODEL: process.env.KELP_DEFAULT_MODEL,
+  };
+
+  afterEach(() => {
+    restoreEnv("KELP_BASE_URL", originalEnv.KELP_BASE_URL);
+    restoreEnv("KELP_API_KEY", originalEnv.KELP_API_KEY);
+    restoreEnv("KELP_DEFAULT_MODEL", originalEnv.KELP_DEFAULT_MODEL);
+  });
+
+  test("anthropic client options read kelp-prefixed env vars", () => {
+    process.env.KELP_BASE_URL = "https://example.com";
+    process.env.KELP_API_KEY = "secret";
+
+    expect(getAnthropicClientOptions()).toEqual({
+      baseURL: "https://example.com",
+      apiKey: "secret",
+    });
+  });
+
+  test("default model reads kelp-prefixed env var", () => {
+    process.env.KELP_DEFAULT_MODEL = "anthropic/test-model";
+
+    expect(getDefaultModel()).toBe("anthropic/test-model");
   });
 });
 
