@@ -7,7 +7,7 @@ export class BashSession {
     this.proc = Bun.spawn(["/bin/bash"], {
       stdin: "pipe",
       stdout: "pipe",
-      stderr: "pipe",
+      stderr: "inherit",
     });
   }
 
@@ -27,13 +27,12 @@ export class BashSession {
 
     const proc = this.proc!;
     const marker = `${BashSession.MARKER}_${Date.now()}`;
-    const fullCommand = `${command}\necho "${marker}"\n`;
+    const fullCommand = `${command} 2>&1; echo "${marker} $?"\n`;
 
     proc.stdin!.write(fullCommand);
     await proc.stdin!.flush();
 
     const stdoutReader = proc.stdout!.getReader();
-    const stderrReader = proc.stderr!.getReader();
     const decoder = new TextDecoder();
     let output = "";
 
@@ -46,15 +45,18 @@ export class BashSession {
     }
 
     stdoutReader.releaseLock();
-    stderrReader.releaseLock();
 
-    output = output.replace(new RegExp(`.*${marker}.*\n?`), "");
+    const markerRegex = new RegExp(`${marker} (\\d+)\\n?`);
+    const match = output.match(markerRegex);
+    const exitCode = match ? parseInt(match[1], 10) : 0;
+    output = output.replace(markerRegex, "");
 
     const lines = output.split("\n");
-    if (lines.length > 100) {
-      return lines.slice(0, 100).join("\n") + "\n...[truncated]";
-    }
+    const truncated =
+      lines.length > 100
+        ? lines.slice(0, 100).join("\n") + "\n...[truncated]"
+        : output;
 
-    return output;
+    return exitCode !== 0 ? `[exit code: ${exitCode}]\n${truncated}` : truncated;
   }
 }

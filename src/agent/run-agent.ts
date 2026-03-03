@@ -11,15 +11,20 @@ import type { RuntimeInfo } from "./runtime-info";
 type StreamClient = {
   messages: {
     create(
-      params: Anthropic.MessageCreateParamsStreaming
+      params: Anthropic.MessageCreateParamsStreaming,
     ): PromiseLike<AsyncIterable<Anthropic.MessageStreamEvent>>;
   };
 };
 
 type OutputWriter = Pick<typeof process.stdout, "write">;
-type ToolExecutor = (name: string, input?: Record<string, unknown>) => Promise<string>;
+type ToolExecutor = (
+  name: string,
+  input?: Record<string, unknown>,
+) => Promise<string>;
 type SkillLoader = () => Promise<SkillMeta[]>;
-type ToolUseBlockWithInputBuffer = Anthropic.ToolUseBlock & { _inputStr?: string };
+type ToolUseBlockWithInputBuffer = Anthropic.ToolUseBlock & {
+  _inputStr?: string;
+};
 type AskUserHandler = (input: AskUserToolInput) => Promise<string>;
 
 const DEFAULT_MAX_ASK_USER_ROUNDS = 3;
@@ -50,12 +55,16 @@ function logRequest(logger: Logger, message: Anthropic.MessageParam): void {
     if (block.type !== "tool_result") continue;
 
     const resultText =
-      typeof block.content === "string" ? block.content : JSON.stringify(block.content);
+      typeof block.content === "string"
+        ? block.content
+        : JSON.stringify(block.content);
     logger.info(`-> tool_result: ${truncate(resultText, 60)}`);
   }
 }
 
-function isToolUseBlock(block: Anthropic.ContentBlock): block is Anthropic.ToolUseBlock {
+function isToolUseBlock(
+  block: Anthropic.ContentBlock,
+): block is Anthropic.ToolUseBlock {
   return block.type === "tool_use";
 }
 
@@ -63,7 +72,10 @@ function isAskUserBlock(block: Anthropic.ToolUseBlock): boolean {
   return block.name === "ask_user";
 }
 
-function getToolsForTurn(deps: RunAgentDeps, askUserRounds: number): Anthropic.Tool[] {
+function getToolsForTurn(
+  deps: RunAgentDeps,
+  askUserRounds: number,
+): Anthropic.Tool[] {
   if (!deps.askUser || !deps.askUserTool) return deps.baseTools;
   if (askUserRounds >= (deps.maxAskUserRounds ?? DEFAULT_MAX_ASK_USER_ROUNDS)) {
     return deps.baseTools;
@@ -71,11 +83,17 @@ function getToolsForTurn(deps: RunAgentDeps, askUserRounds: number): Anthropic.T
   return [...deps.baseTools, deps.askUserTool];
 }
 
-function getTextBlocks(contentBlocks: Anthropic.ContentBlock[]): Anthropic.TextBlock[] {
-  return contentBlocks.filter((block): block is Anthropic.TextBlock => block.type === "text");
+function getTextBlocks(
+  contentBlocks: Anthropic.ContentBlock[],
+): Anthropic.TextBlock[] {
+  return contentBlocks.filter(
+    (block): block is Anthropic.TextBlock => block.type === "text",
+  );
 }
 
-function getTrailingQuestion(contentBlocks: Anthropic.ContentBlock[]): string | null {
+function getTrailingQuestion(
+  contentBlocks: Anthropic.ContentBlock[],
+): string | null {
   const text = getTextBlocks(contentBlocks)
     .map((block) => block.text)
     .join("")
@@ -88,8 +106,11 @@ function getTrailingQuestion(contentBlocks: Anthropic.ContentBlock[]): string | 
 async function consumeStream(
   stream: AsyncIterable<Anthropic.MessageStreamEvent>,
   logger: Logger,
-  stdout: OutputWriter
-): Promise<{ contentBlocks: Anthropic.ContentBlock[]; stopReason: Anthropic.StopReason | null }> {
+  stdout: OutputWriter,
+): Promise<{
+  contentBlocks: Anthropic.ContentBlock[];
+  stopReason: Anthropic.StopReason | null;
+}> {
   const contentBlocks: Anthropic.ContentBlock[] = [];
   let currentBlock: Anthropic.ContentBlock | null = null;
   let stopReason: Anthropic.StopReason | null = null;
@@ -104,7 +125,10 @@ async function consumeStream(
       } else if (block.type === "text") {
         stdout.write("\n");
         logger.info("<- [text]");
-      } else if (block.type === "thinking" || block.type === "redacted_thinking") {
+      } else if (
+        block.type === "thinking" ||
+        block.type === "redacted_thinking"
+      ) {
         stdout.write("\n");
       }
       continue;
@@ -121,10 +145,17 @@ async function consumeStream(
         if (currentBlock?.type === "text") {
           currentBlock.text += event.delta.text;
         }
-      } else if (event.delta.type === "input_json_delta" && currentBlock?.type === "tool_use") {
+      } else if (
+        event.delta.type === "input_json_delta" &&
+        currentBlock?.type === "tool_use"
+      ) {
         const toolUseBlock = currentBlock as ToolUseBlockWithInputBuffer;
-        toolUseBlock._inputStr = (toolUseBlock._inputStr ?? "") + event.delta.partial_json;
-      } else if (event.delta.type === "signature_delta" && currentBlock?.type === "thinking") {
+        toolUseBlock._inputStr =
+          (toolUseBlock._inputStr ?? "") + event.delta.partial_json;
+      } else if (
+        event.delta.type === "signature_delta" &&
+        currentBlock?.type === "thinking"
+      ) {
         currentBlock.signature = event.delta.signature;
       }
       continue;
@@ -138,7 +169,7 @@ async function consumeStream(
         toolUseBlock.input = JSON.parse(toolUseBlock._inputStr ?? "{}");
         delete toolUseBlock._inputStr;
         logger.info(
-          `<- [tool_use] ${toolUseBlock.name}: ${truncate(JSON.stringify(toolUseBlock.input), 80)}`
+          `<- [tool_use] ${toolUseBlock.name}: ${truncate(JSON.stringify(toolUseBlock.input), 80)}`,
         );
       }
 
@@ -156,16 +187,26 @@ async function consumeStream(
   return { contentBlocks, stopReason };
 }
 
-export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void> {
+export async function runAgent(
+  prompt: string,
+  deps: RunAgentDeps,
+): Promise<void> {
   const skills = await deps.loadSkills();
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
+  const messages: Anthropic.MessageParam[] = [
+    { role: "user", content: prompt },
+  ];
   let askUserRounds = 0;
   let plainTextAskUserRetries = 0;
 
   while (true) {
     const tools = getToolsForTurn(deps, askUserRounds);
-    const askUserEnabled = tools.some((tool) => "name" in tool && tool.name === "ask_user");
-    const systemPrompt = buildSystemPrompt(skills, { enableAskUser: askUserEnabled, runtime: deps.runtime });
+    const askUserEnabled = tools.some(
+      (tool) => "name" in tool && tool.name === "ask_user",
+    );
+    const systemPrompt = buildSystemPrompt(skills, {
+      enableAskUser: askUserEnabled,
+      runtime: deps.runtime,
+    });
 
     logRequest(deps.logger, messages[messages.length - 1]!);
 
@@ -179,17 +220,27 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
       messages,
     });
 
-    const { contentBlocks, stopReason } = await consumeStream(stream, deps.logger, deps.stdout);
+    const { contentBlocks, stopReason } = await consumeStream(
+      stream,
+      deps.logger,
+      deps.stdout,
+    );
     messages.push({ role: "assistant", content: contentBlocks });
 
-    const trailingQuestion = askUserEnabled ? getTrailingQuestion(contentBlocks) : null;
+    const trailingQuestion = askUserEnabled
+      ? getTrailingQuestion(contentBlocks)
+      : null;
     if (trailingQuestion && stopReason !== "tool_use") {
       if (plainTextAskUserRetries >= DEFAULT_MAX_PLAIN_TEXT_ASK_USER_RETRIES) {
-        throw new Error("assistant asked the user a plain-text question instead of using ask_user");
+        throw new Error(
+          "assistant asked the user a plain-text question instead of using ask_user",
+        );
       }
 
       plainTextAskUserRetries += 1;
-      deps.logger.info("-> ask_user_retry: assistant ended the turn with a plain-text question");
+      deps.logger.info(
+        "-> ask_user_retry: assistant ended the turn with a plain-text question",
+      );
       messages.push({
         role: "user",
         content: `You ended the turn by asking the user a question in plain text: "${trailingQuestion}". Re-ask that exact question with the ask_user tool now. Use kind "confirm" for yes/no approval, otherwise use kind "clarify". Do not call any other tool or add any text.`,
@@ -202,23 +253,27 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
     const toolUseBlocks = contentBlocks.filter(isToolUseBlock);
     const askUserBlocks = toolUseBlocks.filter(isAskUserBlock);
 
-    if (askUserBlocks.length > 1 || (askUserBlocks.length === 1 && toolUseBlocks.length !== 1)) {
+    if (
+      askUserBlocks.length > 1 ||
+      (askUserBlocks.length === 1 && toolUseBlocks.length !== 1)
+    ) {
       throw new Error("ask_user must be the only tool call in its response");
     }
 
     if (askUserBlocks.length === 1) {
       if (!deps.askUser) {
-        throw new Error("ask_user was requested but interactive input is not enabled");
+        throw new Error(
+          "ask_user was requested but interactive input is not enabled",
+        );
       }
 
       const askUserBlock = askUserBlocks[0]!;
       deps.logger.info(
-        `-> ask_user (${askUserRounds + 1}/${deps.maxAskUserRounds ?? DEFAULT_MAX_ASK_USER_ROUNDS}): ${truncate(JSON.stringify(askUserBlock.input), 80)}`
+        `-> ask_user (${askUserRounds + 1}/${deps.maxAskUserRounds ?? DEFAULT_MAX_ASK_USER_ROUNDS}): ${truncate(JSON.stringify(askUserBlock.input), 80)}`,
       );
       const answer = await deps.askUser(askUserBlock.input as AskUserToolInput);
       askUserRounds += 1;
       plainTextAskUserRetries = 0;
-      deps.logger.info(`-> ask_user_result: ${truncate(answer, 80)}`);
       messages.push({
         role: "user",
         content: [
@@ -236,8 +291,11 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
       toolUseBlocks.map(async (block) => ({
         type: "tool_result" as const,
         tool_use_id: block.id,
-        content: await deps.executeTool(block.name, block.input as Record<string, unknown>),
-      }))
+        content: await deps.executeTool(
+          block.name,
+          block.input as Record<string, unknown>,
+        ),
+      })),
     );
 
     messages.push({ role: "user", content: toolResults });
