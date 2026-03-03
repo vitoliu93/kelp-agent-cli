@@ -16,7 +16,6 @@ const fakeRuntime: RuntimeInfo = {
   shell: "/bin/zsh",
   os: "linux",
   arch: "x64",
-  tools: ["bun", "git"],
 };
 
 class FakeLogger {

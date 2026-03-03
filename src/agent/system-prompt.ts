@@ -36,7 +36,6 @@ function formatEnvironment(runtime: RuntimeInfo): string {
     `cwd: ${runtime.cwd}`,
     `shell: ${runtime.shell}`,
     `platform: ${runtime.os} (${runtime.arch})`,
-    `tools: ${runtime.tools.join(", ") || "none"}`,
   ];
   return lines.join("\n");
 }
