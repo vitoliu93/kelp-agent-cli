@@ -4,6 +4,7 @@ import { getDefaultModel } from "../env";
 import type { Logger } from "../logger";
 import { truncate } from "../logger";
 import type { SkillMeta } from "../skills/load-skills";
+import type { AskUserToolInput } from "../cli/ask-user";
 import { buildSystemPrompt } from "./system-prompt";
 
 type StreamClient = {
@@ -18,11 +19,17 @@ type OutputWriter = Pick<typeof process.stdout, "write">;
 type ToolExecutor = (name: string, input?: Record<string, unknown>) => Promise<string>;
 type SkillLoader = () => Promise<SkillMeta[]>;
 type ToolUseBlockWithInputBuffer = Anthropic.ToolUseBlock & { _inputStr?: string };
+type AskUserHandler = (input: AskUserToolInput) => Promise<string>;
+
+const DEFAULT_MAX_ASK_USER_ROUNDS = 3;
 
 export interface RunAgentDeps {
   client: StreamClient;
   logger: Logger;
-  tools: Anthropic.Tool[];
+  baseTools: Anthropic.Tool[];
+  askUserTool?: Anthropic.Tool;
+  askUser?: AskUserHandler;
+  maxAskUserRounds?: number;
   executeTool: ToolExecutor;
   loadSkills: SkillLoader;
   stdout: OutputWriter;
@@ -47,6 +54,18 @@ function logRequest(logger: Logger, message: Anthropic.MessageParam): void {
 
 function isToolUseBlock(block: Anthropic.ContentBlock): block is Anthropic.ToolUseBlock {
   return block.type === "tool_use";
+}
+
+function isAskUserBlock(block: Anthropic.ToolUseBlock): boolean {
+  return block.name === "ask_user";
+}
+
+function getToolsForTurn(deps: RunAgentDeps, askUserRounds: number): Anthropic.Tool[] {
+  if (!deps.askUser || !deps.askUserTool) return deps.baseTools;
+  if (askUserRounds >= (deps.maxAskUserRounds ?? DEFAULT_MAX_ASK_USER_ROUNDS)) {
+    return deps.baseTools;
+  }
+  return [...deps.baseTools, deps.askUserTool];
 }
 
 async function consumeStream(
@@ -122,10 +141,14 @@ async function consumeStream(
 
 export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void> {
   const skills = await deps.loadSkills();
-  const systemPrompt = buildSystemPrompt(skills);
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
+  let askUserRounds = 0;
 
   while (true) {
+    const tools = getToolsForTurn(deps, askUserRounds);
+    const askUserEnabled = tools.some((tool) => "name" in tool && tool.name === "ask_user");
+    const systemPrompt = buildSystemPrompt(skills, { enableAskUser: askUserEnabled });
+
     logRequest(deps.logger, messages[messages.length - 1]!);
 
     const stream = await deps.client.messages.create({
@@ -134,7 +157,7 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
       stream: true,
       system: systemPrompt,
       thinking: { type: "enabled", budget_tokens: 10000 },
-      tools: deps.tools,
+      tools,
       messages,
     });
 
@@ -143,8 +166,40 @@ export async function runAgent(prompt: string, deps: RunAgentDeps): Promise<void
 
     if (stopReason !== "tool_use") break;
 
+    const toolUseBlocks = contentBlocks.filter(isToolUseBlock);
+    const askUserBlocks = toolUseBlocks.filter(isAskUserBlock);
+
+    if (askUserBlocks.length > 1 || (askUserBlocks.length === 1 && toolUseBlocks.length !== 1)) {
+      throw new Error("ask_user must be the only tool call in its response");
+    }
+
+    if (askUserBlocks.length === 1) {
+      if (!deps.askUser) {
+        throw new Error("ask_user was requested but interactive input is not enabled");
+      }
+
+      const askUserBlock = askUserBlocks[0]!;
+      deps.logger.info(
+        `-> ask_user (${askUserRounds + 1}/${deps.maxAskUserRounds ?? DEFAULT_MAX_ASK_USER_ROUNDS}): ${truncate(JSON.stringify(askUserBlock.input), 80)}`
+      );
+      const answer = await deps.askUser(askUserBlock.input as AskUserToolInput);
+      askUserRounds += 1;
+      deps.logger.info(`-> ask_user_result: ${truncate(answer, 80)}`);
+      messages.push({
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: askUserBlock.id,
+            content: answer,
+          },
+        ],
+      });
+      continue;
+    }
+
     const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
-      contentBlocks.filter(isToolUseBlock).map(async (block) => ({
+      toolUseBlocks.map(async (block) => ({
         type: "tool_result" as const,
         tool_use_id: block.id,
         content: await deps.executeTool(block.name, block.input as Record<string, unknown>),

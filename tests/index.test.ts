@@ -2,11 +2,13 @@ import Anthropic from "@anthropic-ai/sdk";
 import { afterEach, describe, expect, test } from "bun:test";
 
 import { runAgent } from "../src/agent/run-agent";
+import { createAskUser } from "../src/cli/ask-user";
 import { resolvePrompt } from "../src/cli/resolve-prompt";
 import { getAnthropicClientOptions, getDefaultModel } from "../src/env";
+import { buildSystemPrompt } from "../src/agent/system-prompt";
 import { BashSession } from "../src/tools/bash-session";
+import { askUserToolDefinition, baseToolDefinitions, createToolDefinitions } from "../src/tools/definitions";
 import { executeTool } from "../src/tools/execute-tool";
-import { toolDefinitions } from "../src/tools/definitions";
 
 class FakeLogger {
   logs: string[] = [];
@@ -133,7 +135,7 @@ describe("agent", () => {
     await runAgent("say hello", {
       client,
       logger,
-      tools: toolDefinitions,
+      baseTools: baseToolDefinitions,
       executeTool: async () => "",
       loadSkills: async () => [],
       stdout,
@@ -156,7 +158,7 @@ describe("agent", () => {
     await runAgent("tell me a secret", {
       client,
       logger,
-      tools: toolDefinitions,
+      baseTools: baseToolDefinitions,
       executeTool: async (name) => {
         executedTools.push(name);
         return "secret";
@@ -172,6 +174,106 @@ describe("agent", () => {
       content: [{ type: "tool_result", tool_use_id: "tool-1", content: "secret" }],
     });
     expect(stdout.text()).toContain("done");
+  });
+
+  test("runAgent handles ask_user clarify round-trip", async () => {
+    const stdout = new FakeStdout();
+    const logger = new FakeLogger();
+    const client = new FakeClient([
+      toolUseResponse("ask-1", "ask_user", { kind: "clarify", question: "which file?" }),
+      textResponse("done"),
+    ]);
+    const answers: string[] = [];
+
+    await runAgent("fix it", {
+      client,
+      logger,
+      baseTools: baseToolDefinitions,
+      askUserTool: askUserToolDefinition,
+      askUser: async (input) => {
+        answers.push(input.question);
+        return JSON.stringify({ kind: "clarify", answer: "src/index.ts" });
+      },
+      maxAskUserRounds: 3,
+      executeTool: async () => "",
+      loadSkills: async () => [],
+      stdout,
+    });
+
+    expect(answers).toEqual(["which file?"]);
+    expect(client.calls).toHaveLength(2);
+    expect(client.calls[0]!.tools.map((tool) => ("name" in tool ? tool.name : ""))).toContain("ask_user");
+    expect(client.calls[1]!.messages[2]).toEqual({
+      role: "user",
+      content: [
+        {
+          type: "tool_result",
+          tool_use_id: "ask-1",
+          content: JSON.stringify({ kind: "clarify", answer: "src/index.ts" }),
+        },
+      ],
+    });
+  });
+
+  test("runAgent handles ask_user confirm round-trip", async () => {
+    const stdout = new FakeStdout();
+    const logger = new FakeLogger();
+    const client = new FakeClient([
+      toolUseResponse("ask-2", "ask_user", { kind: "confirm", question: "continue?" }),
+      textResponse("confirmed"),
+    ]);
+
+    await runAgent("deploy", {
+      client,
+      logger,
+      baseTools: baseToolDefinitions,
+      askUserTool: askUserToolDefinition,
+      askUser: async () => JSON.stringify({ kind: "confirm", answer: "yes" }),
+      maxAskUserRounds: 3,
+      executeTool: async () => "",
+      loadSkills: async () => [],
+      stdout,
+    });
+
+    expect(client.calls[1]!.messages[2]).toEqual({
+      role: "user",
+      content: [
+        {
+          type: "tool_result",
+          tool_use_id: "ask-2",
+          content: JSON.stringify({ kind: "confirm", answer: "yes" }),
+        },
+      ],
+    });
+    expect(stdout.text()).toContain("confirmed");
+  });
+
+  test("runAgent stops exposing ask_user after the round cap", async () => {
+    const stdout = new FakeStdout();
+    const logger = new FakeLogger();
+    const client = new FakeClient([
+      toolUseResponse("ask-1", "ask_user", { kind: "clarify", question: "q1" }),
+      toolUseResponse("ask-2", "ask_user", { kind: "clarify", question: "q2" }),
+      toolUseResponse("ask-3", "ask_user", { kind: "clarify", question: "q3" }),
+      textResponse("done"),
+    ]);
+
+    await runAgent("multi", {
+      client,
+      logger,
+      baseTools: baseToolDefinitions,
+      askUserTool: askUserToolDefinition,
+      askUser: async ({ question }) => JSON.stringify({ kind: "clarify", answer: question }),
+      maxAskUserRounds: 3,
+      executeTool: async () => "",
+      loadSkills: async () => [],
+      stdout,
+    });
+
+    expect(client.calls[0]!.tools.map((tool) => ("name" in tool ? tool.name : ""))).toContain("ask_user");
+    expect(client.calls[1]!.tools.map((tool) => ("name" in tool ? tool.name : ""))).toContain("ask_user");
+    expect(client.calls[2]!.tools.map((tool) => ("name" in tool ? tool.name : ""))).toContain("ask_user");
+    expect(client.calls[3]!.tools.map((tool) => ("name" in tool ? tool.name : ""))).not.toContain("ask_user");
   });
 });
 
@@ -225,5 +327,58 @@ describe("tools", () => {
     await bashSession.run("cd /tmp");
     const output = await bashSession.run("pwd");
     expect(output.trim()).toBe("/tmp");
+  });
+});
+
+describe("interactive tools", () => {
+  test("createToolDefinitions includes ask_user only when enabled", () => {
+    expect(createToolDefinitions({ enableAskUser: false }).map((tool) => tool.name)).toEqual([
+      "tell_secret",
+      "bash",
+    ]);
+    expect(createToolDefinitions({ enableAskUser: true }).map((tool) => tool.name)).toEqual([
+      "tell_secret",
+      "bash",
+      "ask_user",
+    ]);
+  });
+
+  test("createAskUser trims clarify answers", async () => {
+    const askUser = createAskUser({
+      promptInput: async ({ message }) => {
+        expect(message).toBe("Which file?");
+        return " src/index.ts ";
+      },
+    });
+
+    expect(await askUser({ kind: "clarify", question: "Which file?" })).toBe(
+      JSON.stringify({ kind: "clarify", answer: "src/index.ts" })
+    );
+  });
+
+  test("createAskUser normalizes confirm answers", async () => {
+    const askUser = createAskUser({
+      promptConfirm: async ({ message, default: defaultValue }) => {
+        expect(message).toBe("Continue?");
+        expect(defaultValue).toBe(false);
+        return true;
+      },
+    });
+
+    expect(await askUser({ kind: "confirm", question: "Continue?" })).toBe(
+      JSON.stringify({ kind: "confirm", answer: "yes" })
+    );
+  });
+});
+
+describe("system prompt", () => {
+  test("buildSystemPrompt switches ask_user guidance by mode", () => {
+    const nonInteractive = buildSystemPrompt([], { enableAskUser: false });
+    const interactive = buildSystemPrompt([], { enableAskUser: true });
+
+    expect(nonInteractive).toContain("If a task is ambiguous, state your assumption in one line and proceed.");
+    expect(nonInteractive).not.toContain("use the ask_user tool");
+    expect(interactive).toContain("use the ask_user tool");
+    expect(interactive).toContain("Never mix ask_user with other tool calls in the same response.");
   });
 });

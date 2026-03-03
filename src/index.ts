@@ -1,12 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 import { resolvePrompt } from "./cli/resolve-prompt";
+import { createAskUser } from "./cli/ask-user";
 import { runAgent } from "./agent/run-agent";
 import { getAnthropicClientOptions } from "./env";
 import { createLogger } from "./logger";
 import { skillsDir } from "./paths";
 import { loadSkills } from "./skills/load-skills";
-import { toolDefinitions } from "./tools/definitions";
+import { askUserToolDefinition, baseToolDefinitions } from "./tools/definitions";
 import { BashSession } from "./tools/bash-session";
 import { executeTool } from "./tools/execute-tool";
 
@@ -25,12 +26,17 @@ export async function main(): Promise<void> {
   const logger = createLogger();
   const bashSession = new BashSession();
   const client = new Anthropic(getAnthropicClientOptions());
+  const interactiveMode = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+  const askUser = interactiveMode ? createAskUser() : undefined;
 
   try {
     await runAgent(prompt, {
       client,
       logger,
-      tools: toolDefinitions,
+      baseTools: baseToolDefinitions,
+      askUserTool: interactiveMode ? askUserToolDefinition : undefined,
+      askUser,
+      maxAskUserRounds: 3,
       executeTool: (name, input) => executeTool(name, input, bashSession),
       loadSkills: () => loadSkills(skillsDir),
       stdout: process.stdout,

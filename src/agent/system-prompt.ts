@@ -1,6 +1,6 @@
 import type { SkillMeta } from "../skills/load-skills";
 
-export const SYSTEM_PROMPT = `You are kelp, a command-line assistant running on the user's local machine.
+const BASE_SYSTEM_PROMPT = `You are kelp, a command-line assistant running on the user's local machine.
 
 You have bash access. Prefer using it over guessing -- if a question can be answered by running a command, run it.
 
@@ -9,13 +9,29 @@ Rules:
 - One bash call per intent. Pipe and chain within a single call when possible.
 - Never run destructive commands (rm -rf, mkfs, dd, >overwrite) without the user stating the exact target first.
 - Never install packages or start persistent services unless explicitly asked.
-- If a task is ambiguous, state your assumption in one line and proceed.
 - Output plain text. Use markdown only for code blocks.
 - When done, stop. No recap, no sign-off.`;
 
-export function buildSystemPrompt(skills: SkillMeta[]): string {
-  if (skills.length === 0) return SYSTEM_PROMPT;
+function getModeRules(enableAskUser: boolean): string {
+  if (!enableAskUser) {
+    return "- If a task is ambiguous, state your assumption in one line and proceed.";
+  }
+
+  return `- Prefer completing the task in one pass when you already have enough information.
+- If required information is missing, the task is materially ambiguous, or you need explicit approval to continue, use the ask_user tool.
+- Ask one question at a time.
+- Never mix ask_user with other tool calls in the same response.
+- If the task is still reasonable to continue, state your assumption in one line and proceed.
+- After receiving the user's answer, continue the task.`;
+}
+
+export function buildSystemPrompt(
+  skills: SkillMeta[],
+  options: { enableAskUser: boolean }
+): string {
+  const systemPrompt = `${BASE_SYSTEM_PROMPT}\n${getModeRules(options.enableAskUser)}`;
+  if (skills.length === 0) return systemPrompt;
 
   const skillLines = skills.map((skill) => `- ${skill.name} (${skill.path}): ${skill.description}`).join("\n");
-  return `${SYSTEM_PROMPT}\n\n## Available Skills\nIMPORTANT: Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. Do not improvise when a skill exists for the task.\n\n${skillLines}`;
+  return `${systemPrompt}\n\n## Available Skills\nIMPORTANT: Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. Do not improvise when a skill exists for the task.\n\n${skillLines}`;
 }
