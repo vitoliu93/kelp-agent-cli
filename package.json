@@ -1,12 +1,25 @@
 {
-  "name": "myagent",
-  "module": "src/index.ts",
+  "name": "@vito_liu93/kelp-agent",
+  "version": "0.1.0",
+  "description": "Personal TUI agent built with Bun + Claude Messages API",
   "type": "module",
-  "private": true,
+  "bin": {
+    "kelp": "dist/kelp"
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vitoliu93/myagent.git"
+  },
+  "license": "MIT",
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build:bin": "bun build --compile src/index.ts --outfile dist/kelp && mkdir -p \"$HOME/.local/bin\" && ln -sf \"$PWD/dist/kelp\" \"$HOME/.local/bin/kelp\"",
-    "test": "bun test"
+    "build:localbin": "bun build --compile src/index.ts --outfile dist/kelp && mkdir -p \"$HOME/.local/bin\" && ln -sf \"$PWD/dist/kelp\" \"$HOME/.local/bin/kelp\"",
+    "build:bin": "bun build --compile src/index.ts --outfile dist/kelp",
+    "test": "bun test",
+    "publish": "bun run build:bin && npm publish --access public"
   },
   "devDependencies": {
     "@types/bun": "latest"
