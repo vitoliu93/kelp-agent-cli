@@ -349,15 +349,33 @@ describe("env", () => {
     KELP_BASE_URL: process.env.KELP_BASE_URL,
     KELP_API_KEY: process.env.KELP_API_KEY,
     KELP_DEFAULT_MODEL: process.env.KELP_DEFAULT_MODEL,
+    OPENROUTER_ANTHROPIC_BASE_URL: process.env.OPENROUTER_ANTHROPIC_BASE_URL,
+    OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
   };
 
   afterEach(() => {
     restoreEnv("KELP_BASE_URL", originalEnv.KELP_BASE_URL);
     restoreEnv("KELP_API_KEY", originalEnv.KELP_API_KEY);
     restoreEnv("KELP_DEFAULT_MODEL", originalEnv.KELP_DEFAULT_MODEL);
+    restoreEnv(
+      "OPENROUTER_ANTHROPIC_BASE_URL",
+      originalEnv.OPENROUTER_ANTHROPIC_BASE_URL
+    );
+    restoreEnv("OPENROUTER_API_KEY", originalEnv.OPENROUTER_API_KEY);
   });
 
-  test("anthropic client options read kelp-prefixed env vars", () => {
+  test("anthropic client options use bearer auth for openrouter", () => {
+    process.env.KELP_BASE_URL = "https://openrouter.ai/api/v1";
+    process.env.KELP_API_KEY = "openrouter-secret";
+
+    expect(getAnthropicClientOptions()).toEqual({
+      baseURL: "https://openrouter.ai/api",
+      authToken: "openrouter-secret",
+      apiKey: null,
+    });
+  });
+
+  test("anthropic client options keep api key auth for non-openrouter", () => {
     process.env.KELP_BASE_URL = "https://example.com";
     process.env.KELP_API_KEY = "secret";
 
