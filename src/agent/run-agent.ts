@@ -16,12 +16,12 @@ type StreamClient = {
   };
 };
 
-type OutputWriter = Pick<typeof process.stdout, "write">;
-type ToolExecutor = (
+export type OutputWriter = Pick<typeof process.stdout, "write">;
+export type ToolExecutor = (
   name: string,
   input?: Record<string, unknown>,
 ) => Promise<string>;
-type SkillLoader = () => Promise<SkillMeta[]>;
+export type SkillLoader = () => Promise<SkillMeta[]>;
 type ToolUseBlockWithInputBuffer = Anthropic.ToolUseBlock & {
   _inputStr?: string;
 };
@@ -41,6 +41,8 @@ export interface RunAgentDeps {
   loadSkills: SkillLoader;
   stdout: OutputWriter;
   runtime: RuntimeInfo;
+  maxTurns?: number;
+  depth?: number;
 }
 
 function logRequest(logger: Logger, message: Anthropic.MessageParam): void {
@@ -197,8 +199,11 @@ export async function runAgent(
   ];
   let askUserRounds = 0;
   let plainTextAskUserRetries = 0;
+  let turn = 0;
 
   while (true) {
+    if (deps.maxTurns !== undefined && turn >= deps.maxTurns) break;
+    turn++;
     const tools = getToolsForTurn(deps, askUserRounds);
     const askUserEnabled = tools.some(
       (tool) => "name" in tool && tool.name === "ask_user",

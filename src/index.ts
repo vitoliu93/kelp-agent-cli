@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { resolvePrompt } from "./cli/resolve-prompt";
 import { createAskUser } from "./cli/ask-user";
 import { runAgent } from "./agent/run-agent";
+import type { ToolExecutor } from "./agent/run-agent";
 import { collectRuntimeInfo } from "./agent/runtime-info";
 import { getAnthropicClientOptions } from "./env";
 import { createLogger } from "./logger";
@@ -40,6 +41,23 @@ export async function main(): Promise<void> {
   const skillDirs = getSkillDirectories();
 
   try {
+    const executeToolWrapper: ToolExecutor = async (name: string, input?: Record<string, unknown>) => {
+      if (name === "bash") {
+        const rejection = checkBashCommand(input?.command as string);
+        if (rejection) return rejection;
+      }
+      const subagentDeps = {
+        client,
+        logger,
+        baseTools: baseToolDefinitions,
+        executeTool: executeToolWrapper,
+        loadSkills: () => loadSkills(skillDirs),
+        runtime,
+      };
+
+      return executeTool(name, input, bashSession, subagentDeps);
+    };
+
     await runAgent(prompt, {
       client,
       logger,
@@ -47,13 +65,7 @@ export async function main(): Promise<void> {
       askUserTool: interactiveMode ? askUserToolDefinition : undefined,
       askUser,
       maxAskUserRounds: 3,
-      executeTool: async (name, input) => {
-        if (name === "bash") {
-          const rejection = checkBashCommand(input.command as string);
-          if (rejection) return rejection;
-        }
-        return executeTool(name, input, bashSession);
-      },
+      executeTool: executeToolWrapper,
       loadSkills: () => loadSkills(skillDirs),
       stdout: process.stdout,
       runtime,

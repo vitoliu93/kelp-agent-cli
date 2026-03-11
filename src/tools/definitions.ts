@@ -17,6 +17,17 @@ export const baseToolDefinitions: Anthropic.Tool[] = [
       required: ["command"],
     },
   },
+  {
+    name: "delegate_task",
+    description: "Delegate a task to a subagent with independent context. Use this for focused subtasks that don't need the main conversation history.",
+    input_schema: {
+      type: "object",
+      properties: {
+        task: { type: "string", description: "The task description for the subagent to execute" },
+      },
+      required: ["task"],
+    },
+  },
 ];
 
 export const askUserToolDefinition: Anthropic.Tool = {

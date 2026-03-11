@@ -402,10 +402,12 @@ describe("interactive tools", () => {
     expect(createToolDefinitions({ enableAskUser: false }).map((tool) => tool.name)).toEqual([
       "tell_secret",
       "bash",
+      "delegate_task",
     ]);
     expect(createToolDefinitions({ enableAskUser: true }).map((tool) => tool.name)).toEqual([
       "tell_secret",
       "bash",
+      "delegate_task",
       "ask_user",
     ]);
   });

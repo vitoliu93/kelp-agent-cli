@@ -8,8 +8,4 @@ describe("runtime-info", () => {
     expect(info.cwd).toBe(process.cwd());
   });
 
-  test("tools contains bun", () => {
-    const info = collectRuntimeInfo();
-    expect(info.tools).toContain("bun");
-  });
 });

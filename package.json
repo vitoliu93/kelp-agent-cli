@@ -16,7 +16,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "bun run src/index.ts",
-    "build:localbin": "bun build --compile src/index.ts --outfile dist/kelp && mkdir -p \"$HOME/.local/bin\" && ln -sf \"$PWD/dist/kelp\" \"$HOME/.local/bin/kelp\"",
+    "build:dev": "bun build --compile src/index.ts --outfile dist/kelp && mkdir -p \"$HOME/.local/bin\" && ln -sf \"$PWD/dist/kelp\" \"$HOME/.local/bin/kelp\"",
     "build:bin": "bun build --compile src/index.ts --outfile dist/kelp",
     "test": "bun test",
     "publish": "bun run build:bin && npm publish --access public"

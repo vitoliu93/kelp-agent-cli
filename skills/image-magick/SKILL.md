@@ -58,7 +58,7 @@ scripts/image-magick.sh input.jpg output.webp -resize 1200x800 -quality 80
 
 ## Requirements
 
-- ImageMagick (`convert` command) must be installed
+- ImageMagick (`magick` command, or `convert` for older versions) must be installed
 - Input file must exist and be a valid image format
 - Output directory must be writable
 
