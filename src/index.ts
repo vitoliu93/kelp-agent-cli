@@ -19,15 +19,24 @@ import { executeTool } from "./tools/execute-tool";
 import { checkBashCommand } from "./tools/bash-guard";
 
 export async function main(): Promise<void> {
+  let stdinBytes = 0;
   const prompt = await resolvePrompt({
     argv: Bun.argv,
     isTTY: process.stdin.isTTY,
-    readStdin: () => Bun.stdin.text(),
+    readStdin: async () => {
+      const text = await Bun.stdin.text();
+      stdinBytes = Buffer.byteLength(text);
+      return text;
+    },
   });
   if (!prompt) {
     console.error("Usage: bun dev <prompt>");
     console.error("   or: echo '<prompt>' | bun dev");
     process.exit(1);
+  }
+
+  if (!process.stdin.isTTY) {
+    process.stderr.write(`[kelp] received ${stdinBytes} bytes from stdin\n`);
   }
 
   const logger = createLogger();

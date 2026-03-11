@@ -440,6 +440,24 @@ describe("interactive tools", () => {
   });
 });
 
+describe("stdin pipe feedback", () => {
+  test(
+    "writes received byte count to stderr when stdin is piped",
+    async () => {
+      const input = "hello from pipe";
+      const proc = Bun.spawn(["bun", "src/index.ts", "repeat it back"], {
+        stdin: new TextEncoder().encode(input),
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      await proc.exited;
+      const stderr = await new Response(proc.stderr).text();
+      expect(stderr).toContain(`[kelp] received ${Buffer.byteLength(input)} bytes from stdin`);
+    },
+    60000
+  );
+});
+
 describe("system prompt", () => {
   test("buildSystemPrompt switches ask_user guidance by mode", () => {
     const nonInteractive = buildSystemPrompt([], { enableAskUser: false, runtime: fakeRuntime });
