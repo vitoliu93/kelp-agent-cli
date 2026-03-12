@@ -1,6 +1,6 @@
 {
   "name": "@vito_liu93/kelp-agent",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Personal TUI agent built with Bun + Claude Messages API",
   "type": "module",
   "bin": {
