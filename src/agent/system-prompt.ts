@@ -14,7 +14,8 @@ const RULES = `- Answer directly. No preamble, no filler, no pleasantries.
 - Never run destructive commands (rm -rf, mkfs, dd, >overwrite) without the user stating the exact target first.
 - Never install packages or start persistent services unless explicitly asked.
 - Output plain text. Use markdown only for code blocks.
-- When done, stop. No recap, no sign-off.`;
+- When done, stop. No recap, no sign-off.
+- When a skill provides a script for a capability, use it instead of raw bash equivalents (e.g., use a fetch skill instead of curl/wget).`;
 
 function getModeRules(enableAskUser: boolean): string {
   if (!enableAskUser) {

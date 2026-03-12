@@ -33,11 +33,18 @@ export async function runSubagent(task: string, deps: RunAgentDeps): Promise<str
     depth: currentDepth + 1,
   });
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`Subagent timed out after ${SUBAGENT_TIMEOUT_MS}ms`)), SUBAGENT_TIMEOUT_MS)
-  );
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`Subagent timed out after ${SUBAGENT_TIMEOUT_MS}ms`)), SUBAGENT_TIMEOUT_MS);
+  });
 
-  await Promise.race([agentPromise, timeoutPromise]);
+  try {
+    await Promise.race([agentPromise, timeoutPromise]);
+  } finally {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+  }
 
   return output.getOutput() || "Subagent completed task successfully";
 }
