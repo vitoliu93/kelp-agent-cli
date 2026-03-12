@@ -13,5 +13,4 @@ if (!res.ok) {
   process.exit(1);
 }
 
-const body = await res.text();
-console.log(body.slice(0, 30000));
+console.log(await res.text());

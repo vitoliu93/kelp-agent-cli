@@ -13,6 +13,8 @@ export class BashSession {
 
   close(): void {
     if (!this.proc) return;
+    try { this.proc.stdin?.end(); } catch {}
+    try { (this.proc.stdout as ReadableStream | null)?.cancel(); } catch {}
     this.proc.kill();
     this.proc = null;
   }

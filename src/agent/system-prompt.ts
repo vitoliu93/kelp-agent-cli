@@ -15,7 +15,7 @@ const RULES = `- Answer directly. No preamble, no filler, no pleasantries.
 - Never install packages or start persistent services unless explicitly asked.
 - Output plain text. Use markdown only for code blocks.
 - When done, stop. No recap, no sign-off.
-- When a skill provides a script for a capability, use it instead of raw bash equivalents (e.g., use a fetch skill instead of curl/wget).`;
+`;
 
 function getModeRules(enableAskUser: boolean): string {
   if (!enableAskUser) {
@@ -43,7 +43,7 @@ function formatEnvironment(runtime: RuntimeInfo): string {
 
 export function buildSystemPrompt(
   skills: SkillMeta[],
-  options: { enableAskUser: boolean; runtime: RuntimeInfo }
+  options: { enableAskUser: boolean; runtime: RuntimeInfo },
 ): string {
   const sections: string[] = [
     xml("identity", IDENTITY),
@@ -56,7 +56,7 @@ export function buildSystemPrompt(
     const skillLines = skills
       .map((skill) => `- ${skill.name} (${skill.path}): ${skill.description}`)
       .join("\n");
-    const skillsContent = `IMPORTANT: Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. Do not improvise when a skill exists for the task.\n\n${skillLines}`;
+    const skillsContent = `IMPORTANT: Skills are NOT tools. Do not call a skill name as a tool_use. To use a skill: (1) read its SKILL.md with bash, (2) run its script with bash. Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. Do not improvise when a skill exists for the task.\n\n${skillLines}`;
     sections.push(xml("skills", skillsContent));
   }
 
