@@ -13,6 +13,7 @@ const RULES = `- Answer directly. No preamble, no filler, no pleasantries.
 - One bash call per intent. Pipe and chain within a single call when possible.
 - Never run destructive commands (rm -rf, mkfs, dd, >overwrite) without the user stating the exact target first.
 - Never install packages or start persistent services unless explicitly asked.
+- For current or realtime questions (weather, news, prices, schedules, bloom status), prefer a matching installed skill before improvising with bash.
 - Output plain text. Use markdown only for code blocks.
 - When done, stop. No recap, no sign-off.
 `;
@@ -34,6 +35,7 @@ function getModeRules(enableAskUser: boolean): string {
 
 function formatEnvironment(runtime: RuntimeInfo): string {
   const lines = [
+    `date: ${runtime.date}`,
     `cwd: ${runtime.cwd}`,
     `shell: ${runtime.shell}`,
     `platform: ${runtime.os} (${runtime.arch})`,
@@ -56,7 +58,7 @@ export function buildSystemPrompt(
     const skillLines = skills
       .map((skill) => `- ${skill.name} (${skill.path}): ${skill.description}`)
       .join("\n");
-    const skillsContent = `IMPORTANT: Skills are NOT tools. Do not call a skill name as a tool_use. To use a skill: (1) read its SKILL.md with bash, (2) run its script with bash. Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. Do not improvise when a skill exists for the task.\n\n${skillLines}`;
+    const skillsContent = `IMPORTANT: Skills are NOT tools. Do not call a skill name as a tool_use. To use a skill: (1) read its SKILL.md with bash, (2) run its script with bash. Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. For current or realtime questions about weather, news, prices, schedules, bloom status, or similar live conditions, if a matching skill exists you MUST activate it before improvising with bash.\n\n${skillLines}`;
     sections.push(xml("skills", skillsContent));
   }
 

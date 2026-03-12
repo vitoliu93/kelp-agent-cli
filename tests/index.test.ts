@@ -16,6 +16,7 @@ const fakeRuntime: RuntimeInfo = {
   shell: "/bin/zsh",
   os: "linux",
   arch: "x64",
+  date: "2026-03-12",
 };
 
 class FakeLogger {
@@ -493,8 +494,26 @@ describe("system prompt", () => {
 
     expect(prompt).toContain("<environment>");
     expect(prompt).toContain("</environment>");
+    expect(prompt).toContain(fakeRuntime.date);
     expect(prompt).toContain(fakeRuntime.cwd);
     expect(prompt).toContain(fakeRuntime.shell);
     expect(prompt).toContain(fakeRuntime.os);
+  });
+
+  test("buildSystemPrompt pushes realtime questions toward installed skills", () => {
+    const prompt = buildSystemPrompt(
+      [
+        {
+          name: "web-search",
+          description: "Search the web for current information.",
+          path: "/tmp/app/skills/web-search",
+        },
+      ],
+      { enableAskUser: false, runtime: fakeRuntime },
+    );
+
+    expect(prompt).toContain("For current or realtime questions");
+    expect(prompt).toContain("if a matching skill exists you MUST activate it");
+    expect(prompt).toContain("web-search");
   });
 });

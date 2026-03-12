@@ -8,4 +8,8 @@ describe("runtime-info", () => {
     expect(info.cwd).toBe(process.cwd());
   });
 
+  test("date is formatted as local YYYY-MM-DD", () => {
+    const info = collectRuntimeInfo(new Date("2026-03-12T01:02:03"));
+    expect(info.date).toBe("2026-03-12");
+  });
 });

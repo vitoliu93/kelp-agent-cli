@@ -21,6 +21,6 @@ export async function executeTool(
         return `Subagent failed: ${err instanceof Error ? err.message : String(err)}`;
       }
     default:
-      throw new Error(`Unknown tool: ${name}`);
+      return `Tool "${name}" does not exist. Skills are not tools — use the bash tool to invoke them instead.`;
   }
 }

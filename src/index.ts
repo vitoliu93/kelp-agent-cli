@@ -8,9 +8,9 @@ import { collectRuntimeInfo } from "./agent/runtime-info";
 import { getAnthropicClientOptions } from "./env";
 import { createLogger } from "./logger";
 import {
-  assertProjectRootReadable,
+  assertAppRootReadable,
   getSkillDirectories,
-  resolveProjectRoot,
+  resolveAppRoot,
 } from "./paths";
 import { loadSkills } from "./skills/load-skills";
 import { askUserToolDefinition, baseToolDefinitions } from "./tools/definitions";
@@ -45,11 +45,23 @@ export async function main(): Promise<void> {
   const interactiveMode = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const askUser = interactiveMode ? createAskUser() : undefined;
   const runtime = collectRuntimeInfo();
-  const projectRoot = resolveProjectRoot();
-  assertProjectRootReadable(projectRoot);
-  const skillDirs = getSkillDirectories();
+  const appRoot = resolveAppRoot();
+  assertAppRootReadable(appRoot);
+  const skillDirs = getSkillDirectories({ appRoot });
+  let skillsPromise: ReturnType<typeof loadSkills> | undefined;
+  const loadRuntimeSkills = (): ReturnType<typeof loadSkills> => {
+    skillsPromise ??= loadSkills(skillDirs);
+    return skillsPromise;
+  };
 
   try {
+    const skills = await loadRuntimeSkills();
+    if (skills.length === 0) {
+      logger.info(
+        `[skills] none found; appRoot=${appRoot}; searched=${skillDirs.join(", ")}`,
+      );
+    }
+
     const executeToolWrapper: ToolExecutor = async (name: string, input?: Record<string, unknown>) => {
       if (name === "bash") {
         const rejection = checkBashCommand(input?.command as string);
@@ -60,7 +72,7 @@ export async function main(): Promise<void> {
         logger,
         baseTools: baseToolDefinitions,
         executeTool: executeToolWrapper,
-        loadSkills: () => loadSkills(skillDirs),
+        loadSkills: loadRuntimeSkills,
         runtime,
       };
 
@@ -75,7 +87,7 @@ export async function main(): Promise<void> {
       askUser,
       maxAskUserRounds: 3,
       executeTool: executeToolWrapper,
-      loadSkills: () => loadSkills(skillDirs),
+      loadSkills: loadRuntimeSkills,
       stdout: process.stdout,
       runtime,
     });
