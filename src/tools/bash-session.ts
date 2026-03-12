@@ -2,6 +2,7 @@ export class BashSession {
   private static readonly MARKER = "___BASH_DONE___";
 
   private proc: ReturnType<typeof Bun.spawn> | null = null;
+  private queue: Promise<string> = Promise.resolve("");
 
   private spawn(): void {
     this.proc = Bun.spawn(["/bin/bash"], {
@@ -24,7 +25,12 @@ export class BashSession {
     this.spawn();
   }
 
-  async run(command: string): Promise<string> {
+  run(command: string): Promise<string> {
+    this.queue = this.queue.then(() => this._run(command), () => this._run(command));
+    return this.queue;
+  }
+
+  private async _run(command: string): Promise<string> {
     if (!this.proc) this.spawn();
 
     const proc = this.proc!;
@@ -53,12 +59,6 @@ export class BashSession {
     const exitCode = match ? parseInt(match[1], 10) : 0;
     output = output.replace(markerRegex, "");
 
-    const lines = output.split("\n");
-    const truncated =
-      lines.length > 100
-        ? lines.slice(0, 100).join("\n") + "\n...[truncated]"
-        : output;
-
-    return exitCode !== 0 ? `[exit code: ${exitCode}]\n${truncated}` : truncated;
+    return exitCode !== 0 ? `[exit code: ${exitCode}]\n${output}` : output;
   }
 }
