@@ -55,19 +55,33 @@ export function buildSystemPrompt(
   ];
 
   if (skills.length > 0) {
-    const skillLines = skills
+    const example = skills[0]!;
+    const catalogEntries = skills
       .map(
         (skill) =>
           `<skill name="${skill.name}" path="${skill.path}">\n${skill.description}\n</skill>`,
       )
       .join("\n");
-    const skillsContent = `## CRITICAL: Skills are bash scripts, NOT tools.
-Never emit tool_use with a skill name. That will fail every time.
-To use a skill: call the bash tool to (1) cat its SKILL.md, (2) run the script it describes.
-
-Before acting on any user request, check if a skill below matches. If it does, activate it.
-
-${skillLines}`;
+    const skillsContent = [
+      xml(
+        "definition",
+        `A skill is a folder containing a SKILL.md file with instructions for a specific task.
+Skills use progressive disclosure: you see only the name and description here.
+When a task matches, activate the skill to load full instructions.`,
+      ),
+      xml(
+        "warning",
+        "Skills are NOT tools. Never emit tool_use with a skill name; it will fail.",
+      ),
+      xml(
+        "activation",
+        `When a user request matches a skill description, activate it with the bash tool:
+  bash tool → command: "cat ${example.path}/SKILL.md"
+Then follow the instructions SKILL.md gives you (it will tell you what bash commands to run).
+Resolve any relative paths (scripts/foo.sh) against the skill's path attribute.`,
+      ),
+      xml("catalog", catalogEntries),
+    ].join("\n");
     sections.push(xml("skills", skillsContent));
   }
 

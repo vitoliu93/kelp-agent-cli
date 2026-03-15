@@ -512,8 +512,11 @@ describe("system prompt", () => {
       { enableAskUser: false, runtime: fakeRuntime },
     );
 
-    expect(prompt).toContain("Skills are bash scripts, NOT tools");
-    expect(prompt).toContain("Never emit tool_use with a skill name");
+    expect(prompt).toContain("<warning>");
+    expect(prompt).toContain("Skills are NOT tools");
+    expect(prompt).toContain("<activation>");
+    expect(prompt).toContain("cat /tmp/app/skills/web-search/SKILL.md");
+    expect(prompt).toContain("<catalog>");
     expect(prompt).toContain("web-search");
   });
 });
