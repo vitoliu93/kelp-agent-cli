@@ -512,8 +512,8 @@ describe("system prompt", () => {
       { enableAskUser: false, runtime: fakeRuntime },
     );
 
-    expect(prompt).toContain("For current or realtime questions");
-    expect(prompt).toContain("if a matching skill exists you MUST activate it");
+    expect(prompt).toContain("Skills are bash scripts, NOT tools");
+    expect(prompt).toContain("Never emit tool_use with a skill name");
     expect(prompt).toContain("web-search");
   });
 });

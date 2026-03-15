@@ -76,7 +76,7 @@ export async function main(): Promise<void> {
         runtime,
       };
 
-      return executeTool(name, input, bashSession, subagentDeps);
+      return executeTool(name, input, bashSession, subagentDeps, skills);
     };
 
     await runAgent(prompt, {

@@ -56,9 +56,18 @@ export function buildSystemPrompt(
 
   if (skills.length > 0) {
     const skillLines = skills
-      .map((skill) => `- ${skill.name} (${skill.path}): ${skill.description}`)
+      .map(
+        (skill) =>
+          `- ${skill.name}: ${skill.description}\n  Usage: bash tool → cat ${skill.path}/SKILL.md, then run the script it describes with bash.`,
+      )
       .join("\n");
-    const skillsContent = `IMPORTANT: Skills are NOT tools. Do not call a skill name as a tool_use. To use a skill: (1) read its SKILL.md with bash, (2) run its script with bash. Before acting on any user request, check the skills below. If the request matches a skill's description, you MUST read that skill's SKILL.md first and follow its instructions. For current or realtime questions about weather, news, prices, schedules, bloom status, or similar live conditions, if a matching skill exists you MUST activate it before improvising with bash.\n\n${skillLines}`;
+    const skillsContent = `## CRITICAL: Skills are bash scripts, NOT tools.
+Never emit tool_use with a skill name. That will fail every time.
+To use a skill: call the bash tool to (1) cat its SKILL.md, (2) run the script it describes.
+
+Before acting on any user request, check if a skill below matches. If it does, activate it.
+
+${skillLines}`;
     sections.push(xml("skills", skillsContent));
   }
 
