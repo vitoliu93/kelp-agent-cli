@@ -58,7 +58,7 @@ export function buildSystemPrompt(
     const skillLines = skills
       .map(
         (skill) =>
-          `- ${skill.name}: ${skill.description}\n  Usage: bash tool → cat ${skill.path}/SKILL.md, then run the script it describes with bash.`,
+          `<skill name="${skill.name}" path="${skill.path}">\n${skill.description}\n</skill>`,
       )
       .join("\n");
     const skillsContent = `## CRITICAL: Skills are bash scripts, NOT tools.
