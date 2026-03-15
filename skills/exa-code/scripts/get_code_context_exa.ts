@@ -1,11 +1,16 @@
 import { parseArgs } from "node:util";
-import { getCodeContextExa } from "./_client.ts";
+import { search } from "./_client.ts";
 
 const { values } = parseArgs({
   args: Bun.argv.slice(2),
   options: {
     query: { type: "string" },
-    tokensNum: { type: "string" },
+    numResults: { type: "string" },
+    maxChars: { type: "string" },
+    includeDomains: { type: "string" },
+    excludeDomains: { type: "string" },
+    includeText: { type: "string" },
+    summary: { type: "boolean" },
   },
 });
 
@@ -14,8 +19,14 @@ if (!values.query) {
   process.exit(1);
 }
 
-const result = await getCodeContextExa({
+const result = await search({
   query: values.query,
-  tokensNum: values.tokensNum ? Number(values.tokensNum) : undefined,
+  type: "auto",
+  numResults: values.numResults ? Number(values.numResults) : 5,
+  includeDomains: values.includeDomains?.split(",") ?? ["github.com", "stackoverflow.com"],
+  excludeDomains: values.excludeDomains?.split(","),
+  includeText: values.includeText ? [values.includeText] : undefined,
+  text: { maxCharacters: values.maxChars ? Number(values.maxChars) : 20000 },
+  summary: values.summary,
 });
 console.log(result);
