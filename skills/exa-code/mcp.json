@@ -1,4 +1,0 @@
-{
-  "transport": "http",
-  "url": "https://mcp.exa.ai/mcp?exaApiKey=${EXA_API_KEY}"
-}
