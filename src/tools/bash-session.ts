@@ -3,6 +3,11 @@ export class BashSession {
 
   private proc: ReturnType<typeof Bun.spawn> | null = null;
   private queue: Promise<string> = Promise.resolve("");
+  private timeoutMs: number;
+
+  constructor(timeoutMs = 120_000) {
+    this.timeoutMs = timeoutMs;
+  }
 
   private spawn(): void {
     this.proc = Bun.spawn(["/bin/bash"], {
@@ -35,7 +40,7 @@ export class BashSession {
 
     const proc = this.proc!;
     const marker = `${BashSession.MARKER}_${Date.now()}`;
-    const fullCommand = `${command} 2>&1; echo "${marker} $?"\n`;
+    const fullCommand = `{ ${command}\n} 2>&1\necho "${marker} $?"\n`;
 
     proc.stdin!.write(fullCommand);
     await proc.stdin!.flush();
@@ -44,15 +49,29 @@ export class BashSession {
     const decoder = new TextDecoder();
     let output = "";
 
-    while (true) {
-      const { value, done } = await stdoutReader.read();
-      if (done) break;
+    let timedOut = false;
 
-      output += decoder.decode(value);
-      if (output.includes(marker)) break;
-    }
+    const readLoop = async () => {
+      while (true) {
+        const { value, done } = await stdoutReader.read();
+        if (done) break;
+        output += decoder.decode(value);
+        if (output.includes(marker)) break;
+      }
+    };
+
+    const timeout = new Promise<void>((resolve) =>
+      setTimeout(() => { timedOut = true; resolve(); }, this.timeoutMs)
+    );
+
+    await Promise.race([readLoop(), timeout]);
 
     stdoutReader.releaseLock();
+
+    if (timedOut) {
+      this.restart();
+      return "[timeout] Command exceeded 120 seconds";
+    }
 
     const markerRegex = new RegExp(`${marker} (\\d+)\\n?`);
     const match = output.match(markerRegex);
