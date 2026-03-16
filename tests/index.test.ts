@@ -433,7 +433,7 @@ describe("interactive tools", () => {
 
   test("createAskUser trims clarify answers", async () => {
     const askUser = createAskUser({
-      promptInput: async ({ message }) => {
+      promptInput: async (message) => {
         expect(message).toBe("Which file?");
         return " src/index.ts ";
       },
@@ -446,9 +446,8 @@ describe("interactive tools", () => {
 
   test("createAskUser normalizes confirm answers", async () => {
     const askUser = createAskUser({
-      promptConfirm: async ({ message, default: defaultValue }) => {
+      promptConfirm: async (message) => {
         expect(message).toBe("Continue?");
-        expect(defaultValue).toBe(false);
         return true;
       },
     });
