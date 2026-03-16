@@ -1,6 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-export const baseToolDefinitions: Anthropic.Tool[] = [
+export const textEditorToolDefinition: Anthropic.ToolTextEditor20250429 = {
+  type: "text_editor_20250429",
+  name: "str_replace_based_edit_tool",
+};
+
+export const baseToolDefinitions: Anthropic.ToolUnion[] = [
   {
     name: "tell_secret",
     description: "Tell a secret about vito",
@@ -28,6 +33,7 @@ export const baseToolDefinitions: Anthropic.Tool[] = [
       required: ["task"],
     },
   },
+  textEditorToolDefinition,
 ];
 
 export const askUserToolDefinition: Anthropic.Tool = {
@@ -43,7 +49,7 @@ export const askUserToolDefinition: Anthropic.Tool = {
   },
 };
 
-export function createToolDefinitions(options: { enableAskUser: boolean }): Anthropic.Tool[] {
+export function createToolDefinitions(options: { enableAskUser: boolean }): Anthropic.ToolUnion[] {
   if (!options.enableAskUser) return baseToolDefinitions;
   return [...baseToolDefinitions, askUserToolDefinition];
 }

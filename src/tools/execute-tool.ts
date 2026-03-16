@@ -2,6 +2,7 @@ import type { RunAgentDeps } from "../agent/run-agent";
 import type { SkillMeta } from "../skills/load-skills";
 import { runSubagent } from "../agent/subagent";
 import { BashSession } from "./bash-session";
+import { executeTextEditor } from "./text-editor";
 
 export async function executeTool(
   name: string,
@@ -22,6 +23,8 @@ export async function executeTool(
       } catch (err) {
         return `Subagent failed: ${err instanceof Error ? err.message : String(err)}`;
       }
+    case "str_replace_based_edit_tool":
+      return executeTextEditor(input);
     default: {
       const matchedSkill = skills?.find((s) => s.name === name);
       if (matchedSkill) {

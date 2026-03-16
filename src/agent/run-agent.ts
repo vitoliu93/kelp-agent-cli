@@ -33,7 +33,7 @@ const DEFAULT_MAX_PLAIN_TEXT_ASK_USER_RETRIES = 2;
 export interface RunAgentDeps {
   client: StreamClient;
   logger: Logger;
-  baseTools: Anthropic.Tool[];
+  baseTools: Anthropic.ToolUnion[];
   askUserTool?: Anthropic.Tool;
   askUser?: AskUserHandler;
   maxAskUserRounds?: number;
@@ -77,7 +77,7 @@ function isAskUserBlock(block: Anthropic.ToolUseBlock): boolean {
 function getToolsForTurn(
   deps: RunAgentDeps,
   askUserRounds: number,
-): Anthropic.Tool[] {
+): Anthropic.ToolUnion[] {
   if (!deps.askUser || !deps.askUserTool) return deps.baseTools;
   if (askUserRounds >= (deps.maxAskUserRounds ?? DEFAULT_MAX_ASK_USER_ROUNDS)) {
     return deps.baseTools;

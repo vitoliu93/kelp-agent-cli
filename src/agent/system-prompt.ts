@@ -16,6 +16,7 @@ const RULES = `- Answer directly. No preamble, no filler, no pleasantries.
 - For current or realtime questions (weather, news, prices, schedules, bloom status), prefer a matching installed skill before improvising with bash.
 - Output plain text. Use markdown only for code blocks.
 - When done, stop. No recap, no sign-off.
+- Prefer the edit tool (str_replace_based_edit_tool) for file modifications. Use bash for commands, not file editing.
 `;
 
 function getModeRules(enableAskUser: boolean): string {

@@ -49,9 +49,27 @@ Agent will ask for confirmation before executing potentially dangerous commands.
 
 ## Configuration
 
-Set your Anthropic API key in environment:
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KELP_BASE_URL` | Custom API endpoint | - |
+| `KELP_API_KEY` | Custom API key | - |
+| `KELP_DEFAULT_MODEL` | Default model to use | `anthropic/claude-haiku-4.5` |
+
+#### OpenRouter Support
+
+Kelp can use OpenRouter as an alternative API provider:
+
 ```bash
-export ANTHROPIC_API_KEY="your-api-key"
+export OPENROUTER_API_KEY="your-openrouter-key"
+export KELP_DEFAULT_MODEL="anthropic/claude-sonnet-4-20250514"
+```
+
+#### .env file
+
+You can create a `.env` file in your project directory:
+
 ```
 
 ## Build from source
