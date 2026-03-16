@@ -15,8 +15,21 @@ Personal TUI agent built from scratch with Bun + Claude Messages API. A learning
 ### Tools Built-in
 - `bash`: Execute commands in a persistent shell session
 - `delegate_task`: Delegate subtasks to subagents with independent context
+- `str_replace_based_edit_tool`: View, create, and edit files
 - `ask_user`: Request user input or confirmation during execution
-- `tell_secret`: Fun easter egg
+
+### Skills Built-in
+
+| Skill | Description |
+|-------|-------------|
+| `image-magick` | Process images using ImageMagick - resize, format conversion, crop, compression |
+| `web-fetch` | Fetch and read any URL as clean markdown |
+| `hello-world` | Demo skill that greets the user |
+| `create-skill` | Scaffold new Agent Skills, including MCP-based skills |
+| `yt-dlp-subtitle` | Download subtitles from video URLs with multi-language support |
+| `web-search` | Search the web for general topics - news, recipes, travel, product research |
+| `github-cli` | Wrapper for GitHub CLI - clone repos, view issues, create PRs, manage releases |
+| `exa-code` | Search for code examples, documentation, and programming solutions |
 
 ### Tech Stack
 - Powered by **Bun** - fast runtime, easy bundling, TypeScript support out of the box
